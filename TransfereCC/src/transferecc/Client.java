@@ -1,5 +1,6 @@
 package transferecc;
 
+import java.util.InputMismatchException;
 import java.util.Scanner;
 
 /**
@@ -15,24 +16,50 @@ public class Client {
         
             System.out.println(Menu.welcomeMenu(config.getIPS()));
             
-            Scanner in = new Scanner(System.in);
-            int res=in.nextInt();
-            int numIps= config.numIps();
             
             
         }
     }
     
-    public nextAction(int acao, Configuration config){
+    private static String getString(){
+        Scanner in = new Scanner(System.in); 
+        return in.nextLine();
+    }
+    
+    private static int getInt(int defaultValue){
+        Scanner in = new Scanner(System.in);
+        int result = defaultValue;
+        int numTries = 3;
+        
+        while (numTries > 0)
+            try {
+                result = in.nextInt();
+                in.nextLine();
+                numTries = 0;
+            }
+            catch(InputMismatchException e) {
+                System.err.println("Was expecting an int! Try again!");
+                in.nextLine();
+                numTries--;
+            } 
+        return result;
+    }
+    
+    
+    public void nextAction(int acao, Configuration config){
         int nIps= config.numIps();
         Scanner in = new Scanner(System.in);
-        if(nIps==acao){
-            System.out.println("Please insert the IP.");
-            config.addIP(in.next());
-            return;
+        int res=in.nextInt();
+        if(res>0 && res<nIps){
+            //começar ligação com endereço escolhido
         }
         else{
-            if(nIps==acao)
+            switch(res){
+                case 0:
+                    
+                    
+                
+            }
         }
         
     }
