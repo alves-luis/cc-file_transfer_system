@@ -39,14 +39,21 @@ public class Configuration {
             ex.printStackTrace();
         }
     }
-    
+
+    /**
+     * @return Returns an array with all the IPs in the imported file
+     */
     public String[] getIPS() {
         String[] result = new String[ips.size()];
         for(int i = 0; i < ips.size(); i++)
             result[i] = ips.get(i);
         return result;
     }
-    
+
+    /**
+     * Adds a new IP to the file which holds all the destination IPs
+     * @param ip String representation of the ip to be added to the configuration file
+     */
     public void addIP(String ip) {
         try {
             PrintWriter writer = new PrintWriter(new FileWriter(fname,true),true);
@@ -54,6 +61,18 @@ public class Configuration {
         } catch (IOException ex) {
             ex.printStackTrace();
         }
+    }
+
+    /**
+     * Returns the String representation of the i-th IP
+     * @param i Index of IP
+     * @return String representation of the IP, or NULL if invalid index
+     */
+    public String getIP(int i) {
+        if (i < this.ips.size())
+            return this.ips.get(i);
+        else
+            return null;
     }
     
     public int numIps(){

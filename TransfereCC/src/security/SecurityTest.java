@@ -1,5 +1,6 @@
 package security;
 
+
 /**
  *
  * @author alvesluis
@@ -19,6 +20,7 @@ public class SecurityTest {
 
         System.out.println("Me: Encrypting the AES key with your public key!");
         byte[] encryptedAES = myKeys.encryptRSA(otherKeys.getRSAPublicKey());
+        System.out.println(System.currentTimeMillis());
         
         System.out.println("Them: Decrypting the AES key with my private key!");
         byte[] decryptedAES = otherKeys.decryptRSA(encryptedAES);
