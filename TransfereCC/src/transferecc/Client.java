@@ -6,7 +6,7 @@ import java.util.Scanner;
  *
  * @author alvesluis
  */
-public class Cliente {
+public class Client {
     public static void main(String[] args) {
         if (args.length < 1)
             System.out.println(Menu.insuficientArguments(args.length));
