@@ -55,4 +55,8 @@ public class Configuration {
             ex.printStackTrace();
         }
     }
+    
+    public int numIps(){
+        return this.ips.size();
+    }
 }
