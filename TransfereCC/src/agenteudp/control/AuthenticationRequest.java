@@ -1,16 +1,13 @@
 package agenteudp.control;
 
-import agenteudp.PDU;
 
-public class AuthenticationRequest extends PDU {
+import agenteudp.PDUTypes;
 
-    public AuthenticationRequest(long seqNumber, byte type, byte subtype) {
-        super(seqNumber, type, subtype);
-    }
-    
-    
-    @Override
-    public byte[] generatePDU() {
-        return new byte[0];
+
+public class AuthenticationRequest extends PDUControl {
+
+
+    public AuthenticationRequest(long seqNumber) {
+        super(seqNumber, PDUTypes.C_AUTHENTICATION_REQUEST);
     }
 }

@@ -3,18 +3,18 @@ package agenteudp.control;
 import agenteudp.PDU;
 import agenteudp.PDUTypes;
 
-public class Ack extends PDU {
+public class Ack extends PDUControl {
 
     public Ack(long seqNumber) {
-        super(seqNumber,PDUTypes.CONTROL,PDUTypes.C_ACK);
+        super(seqNumber,PDUTypes.C_ACK);
     }
-    
-    @Override
-    public byte[] generatePDU() {
-        long timestamp = this.getTimeStamp();
-        long seqNumber = this.getSeqNumber();
-        byte type = this.getType();
-        byte subtype = this.getSubtype();
-        
+
+    public static Ack degeneratePDU(byte[] data) {
+        PDU pdu = PDU.degeneratePDU(data);
+        Ack ack = new Ack(pdu.getSeqNumber());
+        ack.setTimeStamp(pdu.getTimeStamp());
+        ack.setChecksum(pdu.getChecksum());
+        ack.setSeqNumber(pdu.getSeqNumber());
+        return ack;
     }
 }
