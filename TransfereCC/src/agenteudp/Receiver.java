@@ -9,20 +9,31 @@ import agenteudp.management.FileID;
 import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.CRC32;
 
 public class Receiver implements Runnable {
 
+    public static int DEFAULT_PORT = 5555;
+
     private DatagramSocket socket;
     private int port;
     private int expectedSize; // this will increment according to flow
+    private ArrayList<PDU> pdus;
+    private ReentrantLock lock;
+    private Condition pduArrived;
 
     public Receiver(int port) {
         try {
             this.socket = new DatagramSocket(port);
             this.port = port;
             this.expectedSize = 1024;
+            this.pdus = new ArrayList<>();
+            this.lock = new ReentrantLock();
+            this.pduArrived = lock.newCondition();
         } catch (SocketException e) {
             e.printStackTrace();
         }
@@ -136,6 +147,28 @@ public class Receiver implements Runnable {
         return checksum == sum;
     }
 
+    /**
+     * Method that blocks until a PDU is received, then returns that PDU
+     * @param timeout the timeout of the condition to wait
+     * @return
+     */
+    public PDU getFIFO(long timeout) {
+        try {
+            lock.lock();
+
+            while(this.pdus.isEmpty())
+                this.pduArrived.awaitNanos(timeout);
+
+            return this.pdus.remove(0);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        finally {
+            lock.unlock();
+        }
+        return null;
+    }
+
     @Override
     public void run() {
         System.out.println("Socket is connected!");
@@ -144,7 +177,14 @@ public class Receiver implements Runnable {
             System.out.println("Received a datagram!");
             try {
                 PDU p = this.processDatagram(datagram);
-                System.out.println(p.toString());
+                this.pdus.add(p);
+                try {
+                    this.lock.lock();
+                    this.pduArrived.signalAll();
+                }
+                finally {
+                    this.lock.unlock();
+                }
             } catch (InvalidCRCException | InvalidTypeOfDatagram e) {
                 e.printStackTrace();
             }

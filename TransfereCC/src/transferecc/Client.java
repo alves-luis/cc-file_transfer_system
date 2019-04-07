@@ -1,100 +1,58 @@
 package transferecc;
 
-import agenteudp.PDUTypes;
+import agenteudp.PDU;
 import agenteudp.Receiver;
 import agenteudp.Sender;
-import agenteudp.management.FileID;
+import agenteudp.control.Ack;
+import agenteudp.control.ConnectionRequest;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
-import java.util.InputMismatchException;
-import java.util.Scanner;
+public class Client implements Runnable {
 
-public class Client {
+    private Sender sender;
+    private Receiver receiver;
+    private State state;
 
-    public static void main(String[] args) {
-        if (args.length < 1)
-            System.out.println(Menu.insuficientArguments(args.length));
-        else {
+    public Client(int destPort) {
+        this.sender = new Sender(Sender.DEFAULT_PORT, destPort);
+        this.receiver = new Receiver(Receiver.DEFAULT_PORT);
+        this.state = new State();
+    }
 
-            //Configuration config = new Configuration(args[0]);
-
-            //chooseDestinationIP(config);
-
-            Receiver r = new Receiver(5555);
-            new Thread(r).start();
-            Sender s = new Sender(5555);
-            FileID p = new FileID(123,PDUTypes.M_FILE,"~/hello");
-            s.sendDatagram(p,"localhost");
-
+    private void sendDatagram(PDU datagram, String destIP) {
+        try {
+            InetAddress address = InetAddress.getByName(destIP);
+            sender.sendDatagram(datagram,address);
+        }
+        catch (UnknownHostException e) {
+            System.err.println("Unknown host!" + destIP);
         }
     }
 
-    private static void chooseDestinationIP(Configuration config) {
-        System.out.println(Menu.welcomeMenu(config.getIPS()));
-        int numIps = config.numIps();
-        int chosen = getInt(0,numIps+1);
-        if (chosen == 0)
-            addNewIP(config);
-        else {
-            config.getIP(chosen-1);
-        }
+    public void startConnection(String destIP) {
+        int num_tries = 3;
+        long timeout = 36000;
+        state.setSenderIP(destIP);
+        ConnectionRequest request = new ConnectionRequest(state.genNewSeqNumber());
+        sendDatagram(request,destIP);
+        System.out.println(request.toString());
+        while(num_tries > 0) {
+            PDU response = receiver.getFIFO(timeout);
+            state.receivedDatagram(response.getTimeStamp());
+            if (response instanceof Ack) {
+                Ack ack = (Ack) response;
 
-    }
-
-    private static void addNewIP(Configuration config) {
-
-    }
-
-    private static String getString(){
-        Scanner in = new Scanner(System.in);
-        return in.nextLine();
-    }
-
-    /**
-     * Gets an int from the stdin.
-     * @param defaultValue default value, which after 3 tries is returned
-     * @param maxValue max value to be chosen
-     * @return value
-     */
-    private static int getInt(int defaultValue, int maxValue){
-        Scanner in = new Scanner(System.in);
-        int result = defaultValue;
-        int numTries = 3;
-
-        while (numTries > 0)
-            try {
-                result = in.nextInt();
-                in.nextLine();
-                if (result < maxValue && result >= 0)
-                    numTries = 0;
-                else {
-                    numTries--;
-                    System.err.println("Index out of bounds! Try again!");
-                }
+                System.out.println(ack.toString());
             }
-            catch(InputMismatchException e) {
-                System.err.println("Was expecting an int! Try again!");
-                in.nextLine();
-                numTries--;
-            }
-        return result;
-    }
-
-
-    public void nextAction(int acao, Configuration config){
-        int nIps= config.numIps();
-        Scanner in = new Scanner(System.in);
-        int res=in.nextInt();
-        if(res>0 && res<nIps){
-            //começar ligação com endereço escolhido
-        }
-        else{
-            switch(res){
-                case 0:
-
-
-
+            else {
+                num_tries--;
             }
         }
+    }
 
+    @Override
+    public void run() {
+        new Thread(receiver).start();
     }
 }
