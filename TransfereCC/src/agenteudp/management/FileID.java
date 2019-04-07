@@ -3,8 +3,6 @@ package agenteudp.management;
 import agenteudp.PDU;
 import agenteudp.PDUTypes;
 
-import java.io.File;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -50,7 +48,7 @@ public class FileID extends PDUManagement {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         String PDU = super.toString();
-        // need to concat superclass toString
+        sb.append(PDU);
         sb.append("FileID: ").append(this.fileID).append("\n");
         return sb.toString();
     }

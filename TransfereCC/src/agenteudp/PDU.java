@@ -52,6 +52,7 @@ public class PDU {
         CRC32 checksum = new CRC32();
         checksum.update(data,8,data.length-8);
         long sum = checksum.getValue();
+        this.checksum = sum;
         byte[] checksumByte = ByteBuffer.allocate(8).putLong(sum).array();
         return checksumByte;
     }
@@ -109,6 +110,15 @@ public class PDU {
     public void setSeqNumber(long seqNumber) {
         this.seqNumber = seqNumber;
     }
-    
-    
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Type: ").append(type).append("\n");
+        sb.append("Subtype: ").append(subtype).append("\n");
+        sb.append("Checksum: ").append(checksum).append("\n");
+        sb.append("Time-stamp: ").append(timeStamp).append("\n");
+        sb.append("Sequence number: ").append(seqNumber).append("\n");
+        return sb.toString();
+    }
 }

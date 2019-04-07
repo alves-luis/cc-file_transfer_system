@@ -1,12 +1,13 @@
 package transferecc;
 
+import agenteudp.PDUTypes;
+import agenteudp.Receiver;
+import agenteudp.Sender;
+import agenteudp.management.FileID;
+
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
-/**
- *
- * @author alvesluis
- */
 public class Client {
 
     public static void main(String[] args) {
@@ -14,9 +15,15 @@ public class Client {
             System.out.println(Menu.insuficientArguments(args.length));
         else {
 
-            Configuration config = new Configuration(args[0]);
+            //Configuration config = new Configuration(args[0]);
 
-            chooseDestinationIP(config);
+            //chooseDestinationIP(config);
+
+            Receiver r = new Receiver(5555);
+            new Thread(r).start();
+            Sender s = new Sender(5555);
+            FileID p = new FileID(123,PDUTypes.M_FILE,"~/hello");
+            s.sendDatagram(p,"localhost");
 
         }
     }
