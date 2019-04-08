@@ -176,9 +176,9 @@ public class Receiver implements Runnable {
         System.out.println("Socket is connected!");
         while(true) {
             byte[] datagram = this.receiveDatagram();
-            System.out.println("Received a datagram!");
             try {
                 PDU p = this.processDatagram(datagram);
+                System.out.println("Received: \n" + p.toString());
                 this.pdus.add(p);
                 try {
                     this.lock.lock();

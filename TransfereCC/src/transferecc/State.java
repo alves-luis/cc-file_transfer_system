@@ -15,10 +15,10 @@ public class State {
     private int senderPort;
     private int receiverPort;
     private long lastReceivedDatagram;
-    private byte[] file;
-    private int indexSent; // status of sent file
     private TreeMap<Integer,byte[]> piecesOfFile;
     private long fileID;
+    private long fileSize;
+    private byte[] hashOfFile;
 
     public State() {
         this.seqNumber = 0;
@@ -46,15 +46,14 @@ public class State {
         this.lastReceivedDatagram = when;
     }
 
-    /** Given an array of bytes that represents a file,
+    /**
+     * Given an array of bytes that represents a file,
      * returns the ID associated with that file.
-     * @param file
+     * @param id
      * @return
      */
-    public long setFile(byte[] file) {
-        this.file = file;
-        this.fileID = new Random().nextLong();
-        return fileID;
+    public void setFile(long id) {
+        this.fileID = id;
     }
 
     public void setStartingSeqNumber(long seqNumber) {
@@ -62,10 +61,22 @@ public class State {
     }
 
     public void sentPieceOfFile(byte[] piece, int offset) {
-        // TO DO
+        this.piecesOfFile.put(offset,piece);
     }
 
     public void setFileAsTransfered() {
         // TO DO
+    }
+
+    public void setFileSize(long size) {
+        this.fileSize = size;
+    }
+
+    public void setHashOfFile(byte[] hash) {
+        this.hashOfFile = hash;
+    }
+
+    public void setConectionEstablished() {
+        this.conectionEstablished = true;
     }
 }

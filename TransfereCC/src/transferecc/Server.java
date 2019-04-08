@@ -6,6 +6,7 @@ import agenteudp.Sender;
 import agenteudp.control.Ack;
 import agenteudp.control.ConnectionRequest;
 import agenteudp.data.FirstBlockData;
+import agenteudp.management.FileID;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,6 +23,7 @@ public class Server implements Runnable {
     private static int DEFAULT_RECEIVING_PORT = 7777;
     private static int DEFAULT_CLIENT_PORT = 5555;
     private static int DEFAULT_HEADER_DATA_SIZE = 128;
+    private static long DEFAULT_FILE_ID = 1;
 
     private Sender sender;
     private Receiver receiver;
@@ -44,7 +46,8 @@ public class Server implements Runnable {
             byte[] fileBytes = Files.readAllBytes(file.toPath());
             byte[] hashOfFile = getHashValue(fileBytes);
             long fileSize = file.length();
-            long fileID = state.setFile(fileBytes);
+            long fileID = DEFAULT_FILE_ID;
+            state.setFile(fileID);
             InetAddress IP = state.getSenderIP();
             byte[] data = getFirstChunkOfData(fileBytes);
             FirstBlockData header = new FirstBlockData(seqNumber,fileID,fileSize,hashOfFile,data);
@@ -71,8 +74,6 @@ public class Server implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-
         return false;
     }
 
@@ -87,7 +88,7 @@ public class Server implements Runnable {
             try {
                 InetAddress address = InetAddress.getByName(ip);
                 if (p instanceof ConnectionRequest) {
-                    state.setStartingSeqNumber(p.getSeqNumber());
+                    state.setStartingSeqNumber(p.getSeqNumber() + 1);
                     sender.sendDatagram(new Ack(state.genNewSeqNumber(),p.getSeqNumber()), address);
                     state.setSenderIP(address.getHostAddress());
                     state.receivedDatagram(p.getTimeStamp());
@@ -125,13 +126,30 @@ public class Server implements Runnable {
      * @return
      */
     private static byte[] getFirstChunkOfData(byte[] data) {
-        byte[] result = new byte[DEFAULT_HEADER_DATA_SIZE];
-        System.arraycopy(data,0,result,0,DEFAULT_HEADER_DATA_SIZE);
+        byte[] result = new byte[data.length];
+        System.arraycopy(data,0,result,0,data.length);
         return result;
     }
 
     @Override
     public void run() {
         new Thread(receiver).start();
+    }
+
+    public boolean receiveFileRequest() {
+        int num_tries = 3;
+        while(num_tries > 0) {
+            PDU p = receiver.getFIFO(Server.DEFAULT_TIMEOUT);
+            state.receivedDatagram(p.getTimeStamp());
+            if (p instanceof FileID) {
+                File f = new File("programa_teste.txt");
+                this.sendFileHeader(f);
+                return true;
+            }
+            else {
+                num_tries--;
+            }
+        }
+        return false;
     }
 }

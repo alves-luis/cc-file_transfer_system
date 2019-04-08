@@ -22,12 +22,12 @@ public class FileID extends PDUManagement {
     @Override
     public byte[] generatePDU() {
         byte[] basePDU = super.generatePDU();
-        byte[] fileNameAsBytes = ByteBuffer.allocate(8).putLong(this.getTimeStamp()).array();
+        byte[] fileNameAsBytes = ByteBuffer.allocate(8).putLong(this.fileID).array();
 
         byte[] finalPDU = new byte[basePDU.length + fileNameAsBytes.length + 1];
 
         System.arraycopy(basePDU,0,finalPDU,0, basePDU.length);
-        finalPDU[basePDU.length + 1] = super.getDirection();
+        finalPDU[basePDU.length] = super.getDirection();
         System.arraycopy(fileNameAsBytes,0,finalPDU,basePDU.length + 1,fileNameAsBytes.length);
 
         byte[] checksum = super.generateChecksum(finalPDU);

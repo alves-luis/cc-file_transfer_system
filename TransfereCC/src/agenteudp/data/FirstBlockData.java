@@ -8,11 +8,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
-/**
- *
- * @author 
- */
-
 public class FirstBlockData extends PDU {
     
     public static byte SIZE = 8;

@@ -30,6 +30,10 @@ public class Ack extends PDUControl {
         return finalPDU;
     }
 
+    public long getAck() {
+        return ack;
+    }
+
     public static Ack degeneratePDU(byte[] data) {
         PDU pdu = PDU.degeneratePDU(data);
 
@@ -40,5 +44,11 @@ public class Ack extends PDUControl {
         ackPacket.setChecksum(pdu.getChecksum());
         ackPacket.setSeqNumber(pdu.getSeqNumber());
         return ackPacket;
+    }
+
+    @Override
+    public String toString() {
+        String s = super.toString();
+        return s + "Ack: " + ack + "\n";
     }
 }
