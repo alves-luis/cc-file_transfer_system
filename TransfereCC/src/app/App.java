@@ -1,8 +1,5 @@
 package app;
 
-import agenteudp.Receiver;
-import agenteudp.Sender;
-import agenteudp.control.Ack;
 import transferecc.Client;
 import transferecc.Server;
 
@@ -14,17 +11,23 @@ public class App {
         if (args.length < 1)
             System.out.println(Menu.insuficientArguments(args.length));
         else {
+            if (args[0].equals("client")) {
+                Client c = new Client(7777);
+                new Thread(c).start();
+                boolean success = c.startConnection("localhost");
+                System.out.println(success);
+            }
+            if (args[0].equals("server")) {
+                Server s = new Server();
+                new Thread(s).start();
 
-            //Configuration config = new Configuration(args[0]);
+                boolean serverSuccess = s.receiveConnectionRequest("localhost");
+                System.out.println(serverSuccess);
+            }
 
-            //chooseDestinationIP(config);
 
-            Client c = new Client(7777);
-            Server s = new Server();
-            new Thread(s).start();
-            new Thread(c).start();
-            boolean success = c.startConnection("localhost");
-            System.out.println(success);
+
+
 
             /*Receiver r = new Receiver(5555);
             new Thread(r).start();

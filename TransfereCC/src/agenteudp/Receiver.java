@@ -154,7 +154,7 @@ public class Receiver implements Runnable {
         try {
             lock.lock();
             long timeLeft = timeout;
-            while(this.pdus.isEmpty() && timeLeft > 0) {
+            while(this.pdus.isEmpty() || timeLeft > 0) {
                 timeLeft = this.pduArrived.awaitNanos(timeout);
             }
 
