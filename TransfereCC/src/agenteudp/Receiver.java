@@ -4,6 +4,8 @@ import agenteudp.control.Ack;
 import agenteudp.control.AuthenticationRequest;
 import agenteudp.control.ConnectionRequest;
 import agenteudp.control.ConnectionTermination;
+import agenteudp.data.BlockData;
+import agenteudp.data.FirstBlockData;
 import agenteudp.management.FileID;
 
 import java.io.IOException;
@@ -108,6 +110,12 @@ public class Receiver implements Runnable {
     }
 
     private static PDU parseData(byte[] data, byte subtype) {
+        switch(subtype) {
+            case PDUTypes.D_FIRST:
+                return FirstBlockData.degeneratePDU(data);
+            case PDUTypes.D_OTHER:
+                return BlockData.degeneratePDU(data);
+        }
         return null;
     }
 

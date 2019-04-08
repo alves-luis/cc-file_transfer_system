@@ -38,8 +38,8 @@ public class FileID extends PDUManagement {
 
     public static FileID degeneratePDU(byte[] data) {
         PDU pdu = PDU.degeneratePDU(data);
-        long file = ByteBuffer.wrap(data,BASE_PDU_SIZE,8).getLong();
-        byte direction = data[BASE_PDU_SIZE + 1];
+        long file = ByteBuffer.wrap(data,BASE_PDU_SIZE + 1,8).getLong();
+        byte direction = data[BASE_PDU_SIZE];
         FileID fileID = new FileID(pdu.getSeqNumber(), direction, file);
         return fileID;
     }

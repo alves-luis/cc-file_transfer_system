@@ -19,4 +19,9 @@ public abstract class PDUManagement extends PDU {
     public void setDirection(byte dir) {
         this.direction = dir;
     }
+
+    @Override
+    public String toString() {
+        return super.toString() + "Direction: " + direction + "\n";
+    }
 }
