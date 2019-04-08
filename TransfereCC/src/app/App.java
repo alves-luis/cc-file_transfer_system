@@ -16,7 +16,6 @@ public class App {
                 Client c = new Client(7777);
                 new Thread(c).start();
                 boolean success = c.startConnection("localhost");
-                System.out.println(success);
                 c.requestFile(123);
             }
             if (args[0].equals("server")) {
@@ -25,7 +24,6 @@ public class App {
 
                 boolean serverSuccess = s.receiveConnectionRequest("localhost");
                 boolean file = s.receiveFileRequest();
-                System.out.println(serverSuccess);
             }
 
 

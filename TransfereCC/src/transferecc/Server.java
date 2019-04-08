@@ -55,8 +55,7 @@ public class Server implements Runnable {
             int numTries = 3;
             long timeout = 36000;
             while(numTries > 0) {
-                sender.sendDatagram(header,IP);
-
+                sender.sendDatagram(header,IP); // sends header
                 PDU response = receiver.getFIFO(timeout);
                 if (response == null) { // timed out
                     numTries--;
@@ -64,9 +63,9 @@ public class Server implements Runnable {
                 }
                 state.receivedDatagram(response.getTimeStamp());
                 if (response instanceof Ack) {
-                    long seq = response.getSeqNumber();
-                    if (seq == seqNumber+1) {
-
+                    Ack ack = (Ack) response;
+                    if (ack.getAck() == header.getSeqNumber()) {
+                        return true;
                     }
                 }
 

@@ -21,7 +21,7 @@ public class State {
     private byte[] hashOfFile;
 
     public State() {
-        this.seqNumber = 0;
+        this.seqNumber = Math.abs(new Random().nextLong());
         this.piecesOfFile = new TreeMap<>();
     }
 

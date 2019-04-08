@@ -182,7 +182,8 @@ public class Receiver implements Runnable {
     @Override
     public void run() {
         System.out.println("Socket is connected!");
-        while(true) {
+        boolean serverRunning = true;
+        while(serverRunning) {
             byte[] datagram = this.receiveDatagram();
             try {
                 PDU p = this.processDatagram(datagram);

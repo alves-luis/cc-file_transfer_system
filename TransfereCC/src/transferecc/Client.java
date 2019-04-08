@@ -83,11 +83,12 @@ public class Client implements Runnable {
                 byte[] hash = firstBlock.getHash();
                 state.setHashOfFile(hash);
                 state.sentPieceOfFile(content,0);
+                Ack ack = new Ack(state.genNewSeqNumber(),firstBlock.getSeqNumber());
+                sender.sendDatagram(ack,state.getSenderIP());
                 return true;
             }
         }
         return false;
-
     }
 
 

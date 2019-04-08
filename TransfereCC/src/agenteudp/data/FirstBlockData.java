@@ -73,7 +73,6 @@ public class FirstBlockData extends PDU {
         
         byte[] hash = Arrays.copyOfRange(data,PDU.BASE_PDU_SIZE + 2 * SIZE , PDU.BASE_PDU_SIZE + 2 * SIZE + 20);
         byte[] dados= Arrays.copyOfRange(data,PDU.BASE_PDU_SIZE+ 2 * SIZE +20 ,data.length);
-        System.out.println("HASH: " + hash);
         
        
        
