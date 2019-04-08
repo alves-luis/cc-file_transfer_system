@@ -86,7 +86,6 @@ public class FirstBlockData extends PDU {
         return first;
     }
     
-    
     public static void main(String[] args){
         int size=100;
         byte subtype = 1; 
@@ -102,5 +101,4 @@ public class FirstBlockData extends PDU {
         FirstBlockData rest= degeneratePDU(ud);
         System.out.print("File ID: " +rest.getFileId() + " FILE SIZE : " + rest.getFileSize() + " HASH: " + Arrays.toString(rest.getHash()) + " DATA: " + Arrays.toString(rest.getData()) + "\n");
     }
-    
 }
