@@ -23,8 +23,8 @@ public class FirstBlockData extends PDU {
     private byte[] data;
     
     
-    public FirstBlockData(long seqNumber, byte subtype, long fileId, long fileSize, byte[] hash, byte[] data){
-        super(seqNumber,PDUTypes.D_FIRST,subtype);
+    public FirstBlockData(long seqNumber, long fileId, long fileSize, byte[] hash, byte[] data){
+        super(seqNumber,PDUTypes.DATA,PDUTypes.D_FIRST);
         this.fileID = fileId;
         this.fileSize=fileSize;
         this.hash= hash;
@@ -47,23 +47,7 @@ public class FirstBlockData extends PDU {
     public byte[] getHash() {
         return this.hash;
     }
-    
-    
-   
-    
-    private byte[] getHashValue(byte[] data){
-        byte[] sol = null;
-        try{
-              MessageDigest md;
-              md = MessageDigest.getInstance("SHA-1");
-              sol = md.digest(data);
-        }
-        catch(NoSuchAlgorithmException e){;}
-        return sol;
-    }
-    
-    
-   
+
     
     @Override
     public byte[] generatePDU() {
@@ -98,7 +82,7 @@ public class FirstBlockData extends PDU {
         
        
        
-        FirstBlockData first = new FirstBlockData(pdu.getSeqNumber(), pdu.getSubtype(), fileId, fileSize, hash ,dados );
+        FirstBlockData first = new FirstBlockData(pdu.getSeqNumber(), fileId, fileSize, hash ,dados );
         return first;
     }
     
@@ -111,7 +95,7 @@ public class FirstBlockData extends PDU {
         for(int i=0;i<size;i++){
             b[i] = subtype;
         }
-        FirstBlockData teste = new FirstBlockData(123,subtype,1234,subtype,aa,b);
+        FirstBlockData teste = new FirstBlockData(123,1234,subtype,aa,b);
         byte[] ud= teste.generatePDU();
         
         System.out.print("File ID: " +teste.getFileId() + " FILE SIZE : " + teste.getFileSize() + " HASH: " + Arrays.toString(teste.getHash()) + " DATA: " + Arrays.toString(teste.getData()) + "\n");

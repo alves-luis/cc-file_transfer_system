@@ -23,7 +23,8 @@ public class App {
             Server s = new Server();
             new Thread(s).start();
             new Thread(c).start();
-            c.startConnection("localhost");
+            boolean success = c.startConnection("localhost");
+            System.out.println(success);
 
             /*Receiver r = new Receiver(5555);
             new Thread(r).start();

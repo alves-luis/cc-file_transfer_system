@@ -23,6 +23,6 @@ public class BlockData extends PDU {
 
         byte[] finalPDU = new byte[basePDU.length + fileIDAsBytes.length + offsetAsBytes.length + data.length];
 
-        
+        return null;
     }
 }

@@ -33,8 +33,12 @@ public class Server implements Runnable {
             PDU p = receiver.getFIFO(Server.DEFAULT_TIMEOUT);
             try {
                 InetAddress address = InetAddress.getByName("localhost");
-                if (p instanceof ConnectionRequest)
-                    sender.sendDatagram(new Ack(p.getSeqNumber()+1),address);
+                if (p instanceof ConnectionRequest) {
+                    state.setStartingSeqNumber(p.getSeqNumber());
+                    sender.sendDatagram(new Ack(state.genNewSeqNumber(),p.getSeqNumber()), address);
+                    state.setSenderIP(address.getHostAddress());
+                    state.receivedDatagram(p.getTimeStamp());
+                }
             } catch (UnknownHostException e) {
                 e.printStackTrace();
             }

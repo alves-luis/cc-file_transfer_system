@@ -148,16 +148,20 @@ public class Receiver implements Runnable {
     /**
      * Method that blocks until a PDU is received, then returns that PDU
      * @param timeout the timeout of the condition to wait
-     * @return
+     * @return null if timed out
      */
     public PDU getFIFO(long timeout) {
         try {
             lock.lock();
+            long timeLeft = timeout;
+            while(this.pdus.isEmpty() && timeLeft > 0) {
+                timeLeft = this.pduArrived.awaitNanos(timeout);
+            }
 
-            while(this.pdus.isEmpty())
-                this.pduArrived.awaitNanos(timeout);
-
-            return this.pdus.remove(0);
+            if (!this.pdus.isEmpty())
+                return this.pdus.remove(0);
+            else
+                return null;
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
