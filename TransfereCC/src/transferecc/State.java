@@ -3,19 +3,26 @@ package transferecc;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Random;
+import java.util.TreeMap;
 
 public class State {
 
     private long seqNumber;
     private boolean conectionEstablished;
+    private boolean transferComplete;
     private InetAddress senderIP;
+    private InetAddress receiverIP;
+    private int senderPort;
+    private int receiverPort;
     private long lastReceivedDatagram;
     private byte[] file;
     private int indexSent; // status of sent file
+    private TreeMap<Integer,byte[]> piecesOfFile;
     private long fileID;
 
     public State() {
         this.seqNumber = 0;
+        this.piecesOfFile = new TreeMap<>();
     }
 
     public long genNewSeqNumber() {
@@ -52,5 +59,13 @@ public class State {
 
     public void setStartingSeqNumber(long seqNumber) {
         this.seqNumber = seqNumber;
+    }
+
+    public void sentPieceOfFile(byte[] piece, int offset) {
+        // TO DO
+    }
+
+    public void setFileAsTransfered() {
+        // TO DO
     }
 }
