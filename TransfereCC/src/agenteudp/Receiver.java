@@ -20,7 +20,6 @@ public class Receiver implements Runnable {
     public static int DEFAULT_PORT = 5555;
 
     private DatagramSocket socket;
-    private int port;
     private int expectedSize; // this will increment according to flow
     private ArrayList<PDU> pdus;
     private ReentrantLock lock;
@@ -29,7 +28,6 @@ public class Receiver implements Runnable {
     public Receiver(int port) {
         try {
             this.socket = new DatagramSocket(port);
-            this.port = port;
             this.expectedSize = 1024;
             this.pdus = new ArrayList<>();
             this.lock = new ReentrantLock();

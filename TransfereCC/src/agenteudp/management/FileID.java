@@ -3,6 +3,7 @@ package agenteudp.management;
 import agenteudp.PDU;
 import agenteudp.PDUTypes;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -11,9 +12,9 @@ public class FileID extends PDUManagement {
     public static byte LISTING = 0;
     public static byte FILE = 1;
 
-    private String fileID;
+    private long fileID;
 
-    public FileID(long seqNumber, byte direction, String file) {
+    public FileID(long seqNumber, byte direction, long file) {
         super(seqNumber,PDUTypes.M_FILE, direction );
         this.fileID = file;
     }
@@ -21,7 +22,7 @@ public class FileID extends PDUManagement {
     @Override
     public byte[] generatePDU() {
         byte[] basePDU = super.generatePDU();
-        byte[] fileNameAsBytes = fileID.getBytes(StandardCharsets.UTF_8);
+        byte[] fileNameAsBytes = ByteBuffer.allocate(8).putLong(this.getTimeStamp()).array();
 
         byte[] finalPDU = new byte[basePDU.length + fileNameAsBytes.length + 1];
 
@@ -37,10 +38,9 @@ public class FileID extends PDUManagement {
 
     public static FileID degeneratePDU(byte[] data) {
         PDU pdu = PDU.degeneratePDU(data);
-        byte[] file = Arrays.copyOfRange(data,PDU.BASE_PDU_SIZE,data.length);
-        String fileName = new String(file,StandardCharsets.UTF_8);
+        long file = ByteBuffer.wrap(data,BASE_PDU_SIZE,8).getLong();
         byte direction = data[BASE_PDU_SIZE + 1];
-        FileID fileID = new FileID(pdu.getSeqNumber(), direction, fileName);
+        FileID fileID = new FileID(pdu.getSeqNumber(), direction, file);
         return fileID;
     }
 
