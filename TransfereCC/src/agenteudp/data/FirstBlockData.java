@@ -102,21 +102,4 @@ public class FirstBlockData extends PDU {
         return first;
     }
     
-    
-    public static void main(String[] args){
-        int size=100;
-        byte subtype = 1; 
-        byte[] aa= new byte[20];
-        byte[] b= new byte[size];
-        for(int i=0;i<size;i++){
-            b[i] = subtype;
-        }
-        FirstBlockData teste = new FirstBlockData(123,subtype,1234,subtype,aa,b);
-        byte[] ud= teste.generatePDU();
-        
-        System.out.print("File ID: " +teste.getFileId() + " FILE SIZE : " + teste.getFileSize() + " HASH: " + Arrays.toString(teste.getHash()) + " DATA: " + Arrays.toString(teste.getData()) + "\n");
-        FirstBlockData rest= degeneratePDU(ud);
-        System.out.print("File ID: " +rest.getFileId() + " FILE SIZE : " + rest.getFileSize() + " HASH: " + Arrays.toString(rest.getHash()) + " DATA: " + Arrays.toString(rest.getData()) + "\n");
-    }
-    
 }
