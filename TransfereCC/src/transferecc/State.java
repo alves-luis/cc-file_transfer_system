@@ -19,10 +19,12 @@ public class State {
     private long fileID;
     private long fileSize;
     private byte[] hashOfFile;
+    private int offset;
 
     public State() {
         this.seqNumber = Math.abs(new Random().nextLong());
         this.piecesOfFile = new TreeMap<>();
+        this.offset = 0;
     }
 
     public long genNewSeqNumber() {
@@ -62,6 +64,7 @@ public class State {
 
     public void sentPieceOfFile(byte[] piece, int offset) {
         this.piecesOfFile.put(offset,piece);
+        this.offset += piece.length;
     }
 
     public void setFileAsTransfered() {
@@ -78,5 +81,17 @@ public class State {
 
     public void setConectionEstablished() {
         this.conectionEstablished = true;
+    }
+
+    public long getFileSize() {
+        return this.fileSize;
+    }
+
+    public int getOffset() {
+        return this.offset;
+    }
+
+    public long getFileID() {
+        return this.fileID;
     }
 }
