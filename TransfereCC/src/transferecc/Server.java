@@ -5,6 +5,7 @@ import agenteudp.Receiver;
 import agenteudp.Sender;
 import agenteudp.control.Ack;
 import agenteudp.control.ConnectionRequest;
+import agenteudp.control.ConnectionTermination;
 import agenteudp.data.BlockData;
 import agenteudp.data.FirstBlockData;
 import agenteudp.management.FileID;
@@ -20,7 +21,7 @@ import java.util.HashMap;
 
 public class Server implements Runnable {
 
-    private static long DEFAULT_TIMEOUT = 500000000; // half a second
+    public static long DEFAULT_TIMEOUT = 500000000; // half a second
     private static int DEFAULT_SENDING_PORT = 4444;
     private static int DEFAULT_RECEIVING_PORT = 7777;
     private static int DEFAULT_CLIENT_PORT = 5555;
@@ -210,6 +211,33 @@ public class Server implements Runnable {
             }
             else {
                 num_tries--;
+            }
+        }
+        return false;
+    }
+
+    public void terminateConnection(PDU p){
+
+        sendAck(p);
+        this.state=null;
+
+
+    }
+
+    public void sendAck(PDU p){
+        Ack ack = new Ack(state.genNewSeqNumber(), p.getSeqNumber());
+        sender.sendDatagram(ack, state.getSenderIP());
+    }
+
+
+    public boolean receiveConnectionTermination() {
+        int num_tries = 3;
+        while (num_tries > 0) {
+            PDU p = receiver.getFIFO(Server.DEFAULT_TIMEOUT);
+            state.receivedDatagram();
+            if (p instanceof ConnectionTermination) {
+                terminateConnection(p);
+                return true;
             }
         }
         return false;
