@@ -25,7 +25,7 @@ public class Server implements Runnable {
     private static int DEFAULT_SENDING_PORT = 4444;
     private static int DEFAULT_RECEIVING_PORT = 7777;
     private static int DEFAULT_CLIENT_PORT = 5555;
-    private static int DEFAULT_HEADER_DATA_SIZE = 128;
+    private static int DEFAULT_HEADER_DATA_SIZE = 512;
     private static long DEFAULT_FILE_ID = 1;
 
     private Sender sender;
