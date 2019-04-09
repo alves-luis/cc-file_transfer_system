@@ -2,6 +2,7 @@ package transferecc;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.Instant;
 import java.util.Random;
 import java.util.TreeMap;
 
@@ -44,8 +45,8 @@ public class State {
         }
     }
 
-    public void receivedDatagram(long when) {
-        this.lastReceivedDatagram = when;
+    public void receivedDatagram() {
+        this.lastReceivedDatagram = Instant.now().toEpochMilli();
     }
 
     /**

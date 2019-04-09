@@ -16,6 +16,7 @@ import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.HashMap;
 
 public class Server implements Runnable {
@@ -72,7 +73,7 @@ public class Server implements Runnable {
                         numTries--;
                         continue;
                     }
-                    state.receivedDatagram(response.getTimeStamp());
+                    state.receivedDatagram();
                     if (response instanceof Ack) {
                         Ack ack = (Ack) response;
                         if (ack.getAck() == header.getSeqNumber()) {
@@ -96,8 +97,40 @@ public class Server implements Runnable {
 
     public boolean sendFilePiece(byte[] piece, int offset) {
         BlockData packet = new BlockData(state.genNewSeqNumber(),state.getFileID(),offset,piece);
-        
-        return false; // TO DO
+        return sendPacketWithAck(packet);
+    }
+
+    /**
+     * This method, given a packet, keeps sending it until
+     * it receives an ack, or gives up if timed out
+     * @param packet
+     * @return
+     */
+    public boolean sendPacketWithAck(PDU packet) {
+        int num_tries = 3;
+        long timeout = 3600;
+        boolean timedOut = false;
+        while(num_tries > 0 && !timedOut) {
+            sender.sendDatagram(packet,state.getSenderIP());
+            PDU response = receiver.getFIFO(timeout);
+            if (response == null) {
+                if (num_tries != 1)
+                    num_tries--;
+                else
+                    timedOut = true;
+            }
+            else {
+                state.receivedDatagram();
+                if (response instanceof Ack) {
+                    Ack ack = (Ack) response;
+                    if (ack.getAck() == packet.getSeqNumber()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+
     }
 
     public boolean receiveConnectionRequest(String ip) {
@@ -110,7 +143,7 @@ public class Server implements Runnable {
                     state.setStartingSeqNumber(p.getSeqNumber() + 1);
                     sender.sendDatagram(new Ack(state.genNewSeqNumber(),p.getSeqNumber()), address);
                     state.setSenderIP(address.getHostAddress());
-                    state.receivedDatagram(p.getTimeStamp());
+                    state.receivedDatagram();
                     return true;
                 }
                 else {
@@ -174,7 +207,7 @@ public class Server implements Runnable {
         int num_tries = 3;
         while(num_tries > 0) {
             PDU p = receiver.getFIFO(Server.DEFAULT_TIMEOUT);
-            state.receivedDatagram(p.getTimeStamp());
+            state.receivedDatagram();
             if (p instanceof FileID) {
                 FileID packet = (FileID) p;
                 long fileId = packet.getFileID();
