@@ -6,6 +6,7 @@ import agenteudp.Receiver;
 import agenteudp.Sender;
 import agenteudp.control.Ack;
 import agenteudp.control.ConnectionRequest;
+import agenteudp.control.ConnectionTermination;
 import agenteudp.data.BlockData;
 import agenteudp.data.FirstBlockData;
 import agenteudp.management.FileID;
@@ -35,38 +36,30 @@ public class Client implements Runnable {
 
 
     public boolean startConnection(String destIP) {
-        int num_tries = 3;
-        long timeout = 36000;
         state.setSenderIP(destIP);
 
         ConnectionRequest request = new ConnectionRequest(state.genNewSeqNumber());
-        sender.sendDatagram(request,state.getSenderIP());
+        boolean success = sendPacketWithAck(request);
 
-        while(num_tries > 0) { // awaits an ack
-            PDU response = receiver.getFIFO(timeout);
-            if (response == null) { // timed out
-                num_tries--;
-                continue;
-            }
-            state.receivedDatagram();
-
-            if (response instanceof Ack) {
-                Ack ack = (Ack) response;
-                long whatAcks = ack.getAck();
-                if (whatAcks == request.getSeqNumber()) {
-                    state.setConectionEstablished();
-                    return true;
-                }
-            }
-            else {
-                num_tries--;
-            }
+        if (success) {
+            state.setConectionEstablished();
+            return true;
         }
-        return false;
+        else {
+            return false;
+        }
     }
 
     public boolean endConnection() {
-        return false; // TO DO
+        ConnectionTermination ending = new ConnectionTermination(state.genNewSeqNumber());
+        boolean success = sendPacketWithAck(ending);
+        if (success) {
+            state.setConectionEnded();
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 
     public boolean requestFile(long fileID) {
@@ -185,5 +178,36 @@ public class Client implements Runnable {
     @Override
     public void run() {
         new Thread(receiver).start();
+    }
+
+    /**
+     * This method, given a packet, keeps sending it until
+     * it receives an ack, or gives up if timed out
+     * @param packet packet to send and wait for ack
+     * @return true if packet sent and received an ack
+     */
+    private boolean sendPacketWithAck(PDU packet) {
+        int num_tries = 3;
+        boolean timedOut = false;
+        while(num_tries > 0 && !timedOut) {
+            sender.sendDatagram(packet,state.getSenderIP());
+            PDU response = receiver.getFIFO(Server.DEFAULT_TIMEOUT);
+            if (response == null) {
+                if (num_tries != 1)
+                    num_tries--;
+                else
+                    timedOut = true;
+            }
+            else {
+                state.receivedDatagram();
+                if (response instanceof Ack) {
+                    Ack ack = (Ack) response;
+                    if (ack.getAck() == packet.getSeqNumber()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 }

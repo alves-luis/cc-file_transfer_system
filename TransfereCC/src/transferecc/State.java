@@ -101,4 +101,7 @@ public class State {
         return this.fileID;
     }
 
+    public void setConectionEnded() {
+        this.conectionEstablished = false;
+    }
 }
