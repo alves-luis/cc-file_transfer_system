@@ -24,7 +24,7 @@ public class BlockData extends PDU {
         return fileID;
     }
     
-    public long getOffset(){
+    public int getOffset(){
         return offset;
     }
     

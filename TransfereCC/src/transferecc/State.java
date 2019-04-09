@@ -33,6 +33,18 @@ public class State {
         return senderIP;
     }
 
+    public long getFileSize(){
+        return this.fileSize;
+    }
+
+    public long getFileID(){
+        return this.fileID;
+    }
+
+    public TreeMap<Integer,byte[]> getTreeMap(){
+        return this.piecesOfFile;
+    }
+
     public void setSenderIP(String senderIP) {
         try {
             this.senderIP = InetAddress.getByName(senderIP);
@@ -60,9 +72,7 @@ public class State {
         this.seqNumber = seqNumber;
     }
 
-    public void sentPieceOfFile(byte[] piece, int offset) {
-        this.piecesOfFile.put(offset,piece);
-    }
+    public void sentPieceOfFile(byte[] piece, int offset) { this.piecesOfFile.put(offset,piece);}
 
     public void setFileAsTransfered() {
         // TO DO
@@ -79,4 +89,5 @@ public class State {
     public void setConectionEstablished() {
         this.conectionEstablished = true;
     }
+
 }
