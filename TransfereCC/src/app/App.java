@@ -15,14 +15,15 @@ public class App {
             if (args[0].equals("client")) {
                 Client c = new Client(7777);
                 new Thread(c).start();
-                boolean success = c.startConnection("localhost");
+                boolean success = c.startConnection("192.168.1.11");
                 c.requestFile(123);
+
             }
             if (args[0].equals("server")) {
                 Server s = new Server();
                 new Thread(s).start();
 
-                boolean serverSuccess = s.receiveConnectionRequest("localhost");
+                boolean serverSuccess = s.receiveConnectionRequest("192.168.1.11");
                 boolean file = s.receiveFileRequest();
             }
 
