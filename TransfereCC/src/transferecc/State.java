@@ -2,6 +2,7 @@ package transferecc;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.Instant;
 import java.util.Random;
 import java.util.TreeMap;
 
@@ -19,10 +20,12 @@ public class State {
     private long fileID;
     private long fileSize;
     private byte[] hashOfFile;
+    private int offset;
 
     public State() {
         this.seqNumber = Math.abs(new Random().nextLong());
         this.piecesOfFile = new TreeMap<>();
+        this.offset = 0;
     }
 
     public long genNewSeqNumber() {
@@ -31,14 +34,6 @@ public class State {
 
     public InetAddress getSenderIP() {
         return senderIP;
-    }
-
-    public long getFileSize(){
-        return this.fileSize;
-    }
-
-    public long getFileID(){
-        return this.fileID;
     }
 
     public TreeMap<Integer,byte[]> getTreeMap(){
@@ -54,8 +49,8 @@ public class State {
         }
     }
 
-    public void receivedDatagram(long when) {
-        this.lastReceivedDatagram = when;
+    public void receivedDatagram() {
+        this.lastReceivedDatagram = Instant.now().toEpochMilli();
     }
 
     /**
@@ -72,7 +67,11 @@ public class State {
         this.seqNumber = seqNumber;
     }
 
-    public void sentPieceOfFile(byte[] piece, int offset) { this.piecesOfFile.put(offset,piece);}
+
+    public void sentPieceOfFile(byte[] piece, int offset) {
+        this.piecesOfFile.put(offset,piece);
+        this.offset += piece.length;
+    }
 
     public void setFileAsTransfered() {
         // TO DO
@@ -88,6 +87,18 @@ public class State {
 
     public void setConectionEstablished() {
         this.conectionEstablished = true;
+    }
+
+    public long getFileSize() {
+        return this.fileSize;
+    }
+
+    public int getOffset() {
+        return this.offset;
+    }
+
+    public long getFileID() {
+        return this.fileID;
     }
 
 }

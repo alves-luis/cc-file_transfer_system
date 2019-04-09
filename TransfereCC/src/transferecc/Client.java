@@ -48,7 +48,7 @@ public class Client implements Runnable {
                 num_tries--;
                 continue;
             }
-            state.receivedDatagram(response.getTimeStamp());
+            state.receivedDatagram();
 
             if (response instanceof Ack) {
                 Ack ack = (Ack) response;
@@ -81,7 +81,7 @@ public class Client implements Runnable {
                 num_tries--;
                 continue;
             }
-            state.receivedDatagram(response.getTimeStamp());
+            state.receivedDatagram();
 
             if (response instanceof FirstBlockData) {
                 receivedFirstBlock(response);
@@ -123,7 +123,7 @@ public class Client implements Runnable {
                 continue;
             }
 
-            state.receivedDatagram(response.getTimeStamp());
+            state.receivedDatagram();
 
             if (response instanceof BlockData) {
                received+= receivedBlock(response);

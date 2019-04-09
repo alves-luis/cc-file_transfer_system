@@ -15,7 +15,9 @@ public class App {
             if (args[0].equals("client")) {
                 Client c = new Client(7777);
                 new Thread(c).start();
-                boolean success = c.startConnection("192.168.1.11");
+
+                boolean success = c.startConnection("192.168.1.6");
+
                 c.requestFile(123);
 
             }

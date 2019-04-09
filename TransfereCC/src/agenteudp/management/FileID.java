@@ -52,4 +52,8 @@ public class FileID extends PDUManagement {
         sb.append("FileID: ").append(this.fileID).append("\n");
         return sb.toString();
     }
+
+    public long getFileID() {
+        return this.fileID;
+    }
 }
