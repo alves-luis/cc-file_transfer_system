@@ -16,7 +16,6 @@ import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Instant;
 import java.util.HashMap;
 
 public class Server implements Runnable {
@@ -38,7 +37,7 @@ public class Server implements Runnable {
         this.receiver = new Receiver(Server.DEFAULT_RECEIVING_PORT);
         this.state = new State();
         this.files = new HashMap<>();
-        this.files.put((long) 1,"programa_teste.txt"); // testing purposes
+        this.files.put((long) 123,"programa_teste.txt"); // testing purposes
     }
 
     /**
@@ -46,7 +45,7 @@ public class Server implements Runnable {
      * @param file file to send the header
      * @return
      */
-    public boolean sendFileHeader(File file) {
+    public boolean sendFile(File file) {
         try {
             long seqNumber = state.genNewSeqNumber();
             byte[] fileBytes = Files.readAllBytes(file.toPath());
@@ -55,64 +54,51 @@ public class Server implements Runnable {
             long fileID = DEFAULT_FILE_ID;
 
             state.setFile(fileID);
-            InetAddress IP = state.getSenderIP();
+            state.setFileSize(fileSize);
+            state.setHashOfFile(hashOfFile);
 
             byte[] data = getFirstChunkOfData(fileBytes);
             state.sentPieceOfFile(data,0);
             FirstBlockData header = new FirstBlockData(seqNumber,fileID,fileSize,hashOfFile,data);
 
-            int numTries = 3;
-            long timeout = 36000;
-            while(numTries > 0) {
-                sender.sendDatagram(header,IP); // sends header
-
-                // if no need to send more pieces, wait for ack
-                if(data.length == state.getFileSize()) {
-                    PDU response = receiver.getFIFO(timeout);
-                    if (response == null) { // timed out
-                        numTries--;
-                        continue;
-                    }
-                    state.receivedDatagram();
-                    if (response instanceof Ack) {
-                        Ack ack = (Ack) response;
-                        if (ack.getAck() == header.getSeqNumber()) {
-                            return true;
-                        }
-                    }
-                }
-                // else send rest of file
-                else {
-                    int offset = state.getOffset();
-                    byte[] filePiece = getChunkOfData(fileBytes,offset);
-                    this.sendFilePiece(filePiece,offset);
-                }
-
+            boolean sent = sendPacketWithAck(header);
+            // if need to send more pieces
+            while (state.getOffset() < state.getFileSize()) {
+                byte[] filePiece = getChunkOfData(fileBytes,state.getOffset());
+                this.sendFilePiece(filePiece,state.getOffset());
             }
+
         } catch (IOException e) {
             e.printStackTrace();
         }
         return false;
     }
 
-    public boolean sendFilePiece(byte[] piece, int offset) {
+    /**
+     * Given a piece of a file on a given offset, sends it
+     * @param piece Piece of file to send
+     * @param offset offset of that piece
+     * @return true if managed to send it
+     */
+    private boolean sendFilePiece(byte[] piece, int offset) {
         BlockData packet = new BlockData(state.genNewSeqNumber(),state.getFileID(),offset,piece);
-        return sendPacketWithAck(packet);
+        boolean success = sendPacketWithAck(packet);
+        state.sentPieceOfFile(piece,offset);
+        return success;
     }
 
     /**
      * This method, given a packet, keeps sending it until
      * it receives an ack, or gives up if timed out
-     * @param packet
-     * @return
+     * @param packet packet to send and wait for ack
+     * @return true if packet sent and received an ack
      */
-    public boolean sendPacketWithAck(PDU packet) {
+    private boolean sendPacketWithAck(PDU packet) {
         int num_tries = 3;
-        long timeout = 3600;
         boolean timedOut = false;
         while(num_tries > 0 && !timedOut) {
             sender.sendDatagram(packet,state.getSenderIP());
-            PDU response = receiver.getFIFO(timeout);
+            PDU response = receiver.getFIFO(Server.DEFAULT_TIMEOUT);
             if (response == null) {
                 if (num_tries != 1)
                     num_tries--;
@@ -157,8 +143,8 @@ public class Server implements Runnable {
     }
 
     /** Given an array of bytes, returns its file hash using SHA-1
-     * @param data
-     * @return
+     * @param data array of bytes to generate the hash
+     * @return file hash
      */
     private static byte[] getHashValue(byte[] data){
         byte[] sol = null;
@@ -167,15 +153,17 @@ public class Server implements Runnable {
             md = MessageDigest.getInstance("SHA-1");
             sol = md.digest(data);
         }
-        catch(NoSuchAlgorithmException e){;}
+        catch(NoSuchAlgorithmException e){
+            System.err.println(e.toString());
+        }
         return sol;
     }
 
     /**
      * Given the file as byte[], returns the data sent on the
      * first block
-     * @param data
-     * @return
+     * @param data first chunk of file
+     * @return returns the piece that should be sent along with the header
      */
     private static byte[] getFirstChunkOfData(byte[] data) {
         int sizeOfChunk = data.length > DEFAULT_HEADER_DATA_SIZE ? DEFAULT_HEADER_DATA_SIZE : data.length;
@@ -187,9 +175,9 @@ public class Server implements Runnable {
     /**
      * Given the byte[] and an offset, returns the truncated byte[]
      * if its length-offset is bigger than DEFAULT HEADER DATA SIZE
-     * @param data
-     * @param offset
-     * @return
+     * @param data array to retrieve the chunk from
+     * @param offset index from which to retrieve the chunk
+     * @return returns the piece that should be sent
      */
     private static byte[] getChunkOfData(byte[] data, int offset) {
         int sizeOfChunk = data.length-offset > DEFAULT_HEADER_DATA_SIZE ? DEFAULT_HEADER_DATA_SIZE : data.length - offset;
@@ -214,7 +202,7 @@ public class Server implements Runnable {
                 String filePath = this.files.get(fileId);
                 if (filePath != null) {
                     File f = new File(filePath);
-                    this.sendFileHeader(f);
+                    this.sendFile(f);
                     return true;
                 }
                 else
