@@ -23,18 +23,48 @@ public class Receiver implements Runnable {
 
     private DatagramSocket socket;
     private int expectedSize; // this will increment according to flow
+    private ArrayList<byte[]> datagrams;
     private ArrayList<PDU> pdus;
     private ReentrantLock lock;
     private Condition pduArrived;
+    private Condition datagramArrived;
+    private InetAddress expectedIP;
+    private boolean running;
+    private byte[] buffer;
 
+    /**
+     * DEPRECATED
+     * @param port
+     */
     public Receiver(int port) {
         try {
             this.socket = new DatagramSocket(port);
-            this.expectedSize = 1024;
+            this.expectedSize = 2048;
             this.pdus = new ArrayList<>();
+            this.datagrams = new ArrayList<>();
             this.lock = new ReentrantLock();
             this.pduArrived = lock.newCondition();
+            this.datagramArrived = lock.newCondition();
+            this.expectedIP = null;
+            this.buffer = new byte[expectedSize];
         } catch (SocketException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public Receiver(int defaultPort, InetAddress receiverIP) {
+        try {
+            this.socket = new DatagramSocket(defaultPort);
+            this.expectedSize = 2048;
+            this.pdus = new ArrayList<>();
+            this.datagrams = new ArrayList<>();
+            this.lock = new ReentrantLock();
+            this.pduArrived = lock.newCondition();
+            this.datagramArrived = lock.newCondition();
+            this.expectedIP = receiverIP;
+            this.buffer = new byte[expectedSize];
+        }
+        catch (SocketException e) {
             e.printStackTrace();
         }
     }
@@ -45,10 +75,17 @@ public class Receiver implements Runnable {
      */
     public byte[] receiveDatagram() {
         byte[] data = null;
+        boolean valid = false;
         try {
-            byte[] buffer = new byte[this.expectedSize];
-            DatagramPacket packet = new DatagramPacket(buffer,this.expectedSize);
-            socket.receive(packet);
+            DatagramPacket packet = new DatagramPacket(this.buffer, this.expectedSize);
+
+            while(!valid) {
+                socket.receive(packet);
+                InetAddress receiverIP = packet.getAddress();
+                if (this.expectedIP == null || receiverIP.equals(this.expectedIP))
+                    valid = true;
+            }
+
             int length = packet.getLength();
             int offset = packet.getOffset();
             data = new byte[length];
@@ -60,97 +97,6 @@ public class Receiver implements Runnable {
             System.err.println("Exceção a enviar o pacote!");
         }
         return data;
-    }
-
-    public PDU processDatagram(byte[] data) throws InvalidCRCException, InvalidTypeOfDatagram {
-        PDU result = null;
-        byte[] checksum = getChecksum(data);
-
-        if (!verifyIntegrity(data,checksum))
-            throw new InvalidCRCException("Invalid CRC!");
-
-        byte type = getType(data);
-        byte subtype = getSubtype(data);
-        switch(type) {
-            case PDUTypes.CONTROL:
-                result = parseControl(data,subtype);
-                break;
-            case PDUTypes.MANAGEMENT:
-                result = parseManagement(data,subtype);
-                break;
-            case PDUTypes.DATA:
-                result = parseData(data,subtype);
-                break;
-        }
-        return result;
-    }
-
-    private static PDU parseManagement(byte[] data, byte subtype) {
-        switch(subtype) {
-            case PDUTypes.M_FILE:
-                return FileID.degeneratePDU(data);
-            case PDUTypes.M_TYPE:
-                return null; // will add SOON!
-        }
-        return null;
-    }
-
-    private static PDU parseControl(byte[] data, byte subtype) {
-        switch(subtype) {
-            case PDUTypes.C_ACK:
-                return Ack.degeneratePDU(data);
-            case PDUTypes.C_AUTHENTICATION_REQUEST:
-                return AuthenticationRequest.degeneratePDU(data);
-            case PDUTypes.C_CONNECTION_REQUEST:
-                return ConnectionRequest.degeneratePDU(data);
-            case PDUTypes.C_CONNECTION_TERMINATION:
-                return ConnectionTermination.degeneratePDU(data);
-        }
-        return null;
-    }
-
-    private static PDU parseData(byte[] data, byte subtype) {
-        switch(subtype) {
-            case PDUTypes.D_FIRST:
-                return FirstBlockData.degeneratePDU(data);
-            case PDUTypes.D_OTHER:
-                return BlockData.degeneratePDU(data);
-        }
-        return null;
-    }
-
-    private static byte getType(byte[] data) throws InvalidTypeOfDatagram {
-        if (data.length > 8)
-            return data[8];
-        else
-            throw new InvalidTypeOfDatagram();
-    }
-
-    private static byte getSubtype(byte[] data) throws InvalidTypeOfDatagram {
-        if (data.length > 9)
-            return data[9];
-        else
-            throw new InvalidTypeOfDatagram();
-    }
-
-    private static byte[] getChecksum(byte[] data) {
-        byte[] checksum = Arrays.copyOfRange(data,0,8);
-        return checksum;
-    }
-
-    /**
-     * Given an array of data, and an array of bytes with the checksum, returns true
-     * if the crc of the data matches the checksum value
-     * @param data
-     * @param checksumValue
-     * @return true if they match
-     */
-    private static boolean verifyIntegrity(byte[] data, byte[] checksumValue) {
-        CRC32 crc = new CRC32();
-        crc.update(data,8,data.length-8);
-        long sum = crc.getValue();
-        long checksum = ByteBuffer.wrap(checksumValue,0,8).getLong();
-        return checksum == sum;
     }
 
     /**
@@ -166,10 +112,7 @@ public class Receiver implements Runnable {
                 timeLeft = this.pduArrived.awaitNanos(timeout);
             }
 
-            if (!this.pdus.isEmpty())
-                return this.pdus.remove(0);
-            else
-                return null;
+            return this.pdus.remove(0);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -179,25 +122,68 @@ public class Receiver implements Runnable {
         return null;
     }
 
+    private synchronized boolean running() {
+        return this.running;
+    }
+
+    public synchronized void stopRunning() {
+        this.running = false;
+    }
+
+    public void setExpectedIP(InetAddress ip) {
+        this.expectedIP = ip;
+    }
+
     @Override
     public void run() {
         System.out.println("Socket is connected!");
-        boolean serverRunning = true;
-        while(serverRunning) {
+        Processor p = new Processor(this);
+        new Thread(p).start();
+        this.running = true;
+        while(running) {
             byte[] datagram = this.receiveDatagram();
             try {
-                PDU p = this.processDatagram(datagram);
-                System.out.println("Received: \n" + p.toString());
-                this.pdus.add(p);
+                lock.lock();
+                this.datagrams.add(datagram);
+                this.datagramArrived.signalAll();
+            }
+            finally {
+                lock.unlock();
+            }
+        }
+    }
+
+    /**
+     * Processes received datagrams
+     */
+    private class Processor implements Runnable {
+
+        private Receiver r;
+
+        private Processor(Receiver r) {
+            this.r = r;
+        }
+
+        @Override
+        public void run() {
+            while(r.running()) {
                 try {
-                    this.lock.lock();
-                    this.pduArrived.signalAll();
+                    lock.lock();
+                    int read = r.datagrams.size();
+                    while(r.datagrams.isEmpty())
+                        r.datagramArrived.await();
+
+                    PDU p = DatagramParser.processDatagram(r.datagrams.get(0));
+                    System.out.println("Processed: "  + p.toString());
+                    r.datagrams.remove(0);
+                    r.pdus.add(p);
+                    r.pduArrived.signalAll();
+
+                } catch (InterruptedException | InvalidTypeOfDatagram | InvalidCRCException e) {
+                    e.printStackTrace();
+                } finally {
+                    lock.unlock();
                 }
-                finally {
-                    this.lock.unlock();
-                }
-            } catch (InvalidCRCException | InvalidTypeOfDatagram e) {
-                e.printStackTrace();
             }
         }
     }

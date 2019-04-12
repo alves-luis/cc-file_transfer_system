@@ -37,6 +37,7 @@ public class Client implements Runnable {
 
     public boolean startConnection(String destIP) {
         state.setSenderIP(destIP);
+        receiver.setExpectedIP(state.getSenderIP());
 
         ConnectionRequest request = new ConnectionRequest(state.genNewSeqNumber());
         boolean success = sendPacketWithAck(request);

@@ -3,7 +3,6 @@ package app;
 import transferecc.Client;
 import transferecc.Server;
 
-import java.io.File;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
@@ -16,32 +15,19 @@ public class App {
                 Client c = new Client(7777);
                 new Thread(c).start();
 
-                boolean success = c.startConnection("192.168.1.6");
+                boolean success = c.startConnection("localhost");
 
                 c.requestFile(123);
+                c.endConnection();
 
             }
             if (args[0].equals("server")) {
                 Server s = new Server();
                 new Thread(s).start();
 
-                boolean serverSuccess = s.receiveConnectionRequest("192.168.1.11");
+                boolean serverSuccess = s.receiveConnectionRequest("localhost");
                 boolean file = s.receiveFileRequest();
             }
-
-
-
-
-
-            /*Receiver r = new Receiver(5555);
-            new Thread(r).start();
-            Sender s = new Sender(5555);
-            Ack p = new Ack(123);
-            try {
-                s.sendDatagram(p,InetAddress.getByName("localhost"));
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-            }*/
 
         }
     }

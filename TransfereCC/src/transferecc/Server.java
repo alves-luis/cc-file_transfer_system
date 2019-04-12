@@ -21,7 +21,11 @@ import java.util.HashMap;
 
 public class Server implements Runnable {
 
-    public static long DEFAULT_TIMEOUT = 500000000; // half a second
+    public static int DEFAULT_TIMEOUT = 30000; // 3 seconds
+    public static int DEFAULT_TIMEOUT_TRIES = 5; // number of tries before timing out
+    public static float ALPHA = (float) 0.125;
+    public static float BETA = (float) 0.25;
+
     private static int DEFAULT_SENDING_PORT = 4444;
     private static int DEFAULT_RECEIVING_PORT = 7777;
     private static int DEFAULT_CLIENT_PORT = 5555;
@@ -130,6 +134,7 @@ public class Server implements Runnable {
                     state.setStartingSeqNumber(p.getSeqNumber() + 1);
                     sender.sendDatagram(new Ack(state.genNewSeqNumber(),p.getSeqNumber()), address);
                     state.setSenderIP(address.getHostAddress());
+                    receiver.setExpectedIP(state.getSenderIP());
                     state.receivedDatagram();
                     return true;
                 }
