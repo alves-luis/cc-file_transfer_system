@@ -6,9 +6,11 @@ import agenteudp.Sender;
 import agenteudp.control.Ack;
 import agenteudp.control.ConnectionRequest;
 import agenteudp.control.ConnectionTermination;
+import agenteudp.control.KeyExchange;
 import agenteudp.data.BlockData;
 import agenteudp.data.FirstBlockData;
 import agenteudp.management.FileID;
+import security.Keys;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,14 +19,13 @@ import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.HashMap;
 
 public class Server implements Runnable {
 
     public static int DEFAULT_TIMEOUT = 30000; // 3 seconds
     public static int DEFAULT_TIMEOUT_TRIES = 5; // number of tries before timing out
-    public static float ALPHA = (float) 0.125;
-    public static float BETA = (float) 0.25;
 
     private static int DEFAULT_SENDING_PORT = 4444;
     private static int DEFAULT_RECEIVING_PORT = 7777;
@@ -38,11 +39,11 @@ public class Server implements Runnable {
     private HashMap<Long,String> files;
 
     public Server() {
-        this.sender = new Sender(Server.DEFAULT_SENDING_PORT,DEFAULT_CLIENT_PORT);
-        this.receiver = new Receiver(Server.DEFAULT_RECEIVING_PORT);
         this.state = new State();
         this.files = new HashMap<>();
         this.files.put((long) 123,"programa_teste.txt"); // testing purposes
+        this.receiver = new Receiver(Server.DEFAULT_RECEIVING_PORT, null,state.getKeys());
+        this.sender = new Sender(Server.DEFAULT_SENDING_PORT,DEFAULT_CLIENT_PORT, state.getKeys());
     }
 
     /**
@@ -66,7 +67,7 @@ public class Server implements Runnable {
             state.sentPieceOfFile(data,0);
             FirstBlockData header = new FirstBlockData(seqNumber,fileID,fileSize,hashOfFile,data);
 
-            boolean sent = sendPacketWithAck(header);
+            boolean sent = sendPacketWithResponse(header);
             // if need to send more pieces
             while (state.getOffset() < state.getFileSize()) {
                 byte[] filePiece = getChunkOfData(fileBytes,state.getOffset());
@@ -87,18 +88,18 @@ public class Server implements Runnable {
      */
     private boolean sendFilePiece(byte[] piece, int offset) {
         BlockData packet = new BlockData(state.genNewSeqNumber(),state.getFileID(),offset,piece);
-        boolean success = sendPacketWithAck(packet);
+        boolean success = sendPacketWithResponse(packet);
         state.sentPieceOfFile(piece,offset);
         return success;
     }
 
     /**
      * This method, given a packet, keeps sending it until
-     * it receives an ack, or gives up if timed out
+     * it receives an ack or reponse, or gives up if timed out
      * @param packet packet to send and wait for ack
      * @return true if packet sent and received an ack
      */
-    private boolean sendPacketWithAck(PDU packet) {
+    private boolean sendPacketWithResponse(PDU packet) {
         int num_tries = 3;
         boolean timedOut = false;
         while(num_tries > 0 && !timedOut) {
@@ -118,6 +119,15 @@ public class Server implements Runnable {
                         return true;
                     }
                 }
+                else if (response instanceof KeyExchange) {
+                    KeyExchange keyEx = (KeyExchange) response;
+                    byte[] aesKey = state.decryptWithMyRSA(keyEx.getKey());
+                    state.setAESKey(aesKey);
+                    this.receiver.activateAESKeyEncryption();
+                    this.sender.activateAESKeyEncryption();
+                    sendAck(keyEx);
+                    return true;
+                }
             }
         }
         return false;
@@ -132,9 +142,9 @@ public class Server implements Runnable {
                 InetAddress address = InetAddress.getByName(ip);
                 if (p instanceof ConnectionRequest) {
                     state.setStartingSeqNumber(p.getSeqNumber() + 1);
-                    sender.sendDatagram(new Ack(state.genNewSeqNumber(),p.getSeqNumber()), address);
                     state.setSenderIP(address.getHostAddress());
                     receiver.setExpectedIP(state.getSenderIP());
+                    sendPacketWithResponse(new KeyExchange(state.genNewSeqNumber(),state.getRSAPublicKey()));
                     state.receivedDatagram();
                     return true;
                 }

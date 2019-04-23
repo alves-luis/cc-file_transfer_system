@@ -1,21 +1,14 @@
 package agenteudp;
 
-import agenteudp.control.Ack;
-import agenteudp.control.AuthenticationRequest;
-import agenteudp.control.ConnectionRequest;
-import agenteudp.control.ConnectionTermination;
-import agenteudp.data.BlockData;
-import agenteudp.data.FirstBlockData;
-import agenteudp.management.FileID;
+import security.Keys;
 
 import java.io.IOException;
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.zip.CRC32;
 
 public class Receiver implements Runnable {
 
@@ -31,6 +24,12 @@ public class Receiver implements Runnable {
     private InetAddress expectedIP;
     private boolean running;
     private byte[] buffer;
+    private ConcurrentHashMap<Long,Condition> seqToCondition;
+    private ConcurrentHashMap<Long,PDU> seqToPdu;
+    // is used to map all the received datagrams to given IP
+    private ConcurrentHashMap<InetAddress,List<byte[]>> knownIpsToReceivedDatagrams;
+    private boolean aesKeyEncryption; // if should use aesKeyDecryption;
+    private Keys communicationKeys;
 
     /**
      * DEPRECATED
@@ -47,13 +46,21 @@ public class Receiver implements Runnable {
             this.datagramArrived = lock.newCondition();
             this.expectedIP = null;
             this.buffer = new byte[expectedSize];
+            this.seqToCondition = new ConcurrentHashMap<>();
+            this.seqToPdu = new ConcurrentHashMap<>();
+            this.aesKeyEncryption = false;
+            this.communicationKeys = new Keys();
         } catch (SocketException e) {
             e.printStackTrace();
         }
     }
 
-    public Receiver(int defaultPort, InetAddress receiverIP) {
+    public Receiver(int defaultPort, InetAddress receiverIP, Keys k) {
         try {
+            /* This should be removed soon:*/
+            this.seqToCondition = new ConcurrentHashMap<>();
+            this.seqToPdu = new ConcurrentHashMap<>();
+            /* */
             this.socket = new DatagramSocket(defaultPort);
             this.expectedSize = 2048;
             this.pdus = new ArrayList<>();
@@ -63,6 +70,9 @@ public class Receiver implements Runnable {
             this.datagramArrived = lock.newCondition();
             this.expectedIP = receiverIP;
             this.buffer = new byte[expectedSize];
+            this.knownIpsToReceivedDatagrams = new ConcurrentHashMap<>();
+            this.aesKeyEncryption = false;
+            this.communicationKeys = k;
         }
         catch (SocketException e) {
             e.printStackTrace();
@@ -145,12 +155,44 @@ public class Receiver implements Runnable {
             try {
                 lock.lock();
                 this.datagrams.add(datagram);
-                this.datagramArrived.signalAll();
+                this.datagramArrived.signal();
             }
             finally {
                 lock.unlock();
             }
         }
+    }
+
+    /**
+     * Given a sequence number, and a timeout, waits that timeout for a PDU
+     * @param seqNumber number that comes in the ack field of the PDU that should arrive
+     * @param timeout number of milisseconds before timeout
+     * @return ack or null, if timed out
+     */
+    public PDU getAck(long seqNumber, long timeout) {
+        Condition c = this.lock.newCondition();
+        this.seqToCondition.put(seqNumber,c);
+        try {
+            lock.lock();
+            long timeLeft = timeout * 1000000; // in nano seconds
+            PDU response = null;
+            while(response == null || timeLeft > 0) {
+                timeLeft = this.pduArrived.awaitNanos(timeLeft);
+                response = this.seqToPdu.get(seqNumber);
+            }
+
+            return response;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        finally {
+            lock.unlock();
+        }
+        return null;
+    }
+
+    public void activateAESKeyEncryption() {
+        this.aesKeyEncryption = true;
     }
 
     /**
@@ -169,16 +211,22 @@ public class Receiver implements Runnable {
             while(r.running()) {
                 try {
                     lock.lock();
-                    int read = r.datagrams.size();
                     while(r.datagrams.isEmpty())
                         r.datagramArrived.await();
 
-                    PDU p = DatagramParser.processDatagram(r.datagrams.get(0));
-                    System.out.println("Processed: "  + p.toString());
+                    byte[] datagram = r.datagrams.get(0);
+                    if (aesKeyEncryption)
+                        datagram = communicationKeys.decryptAES(datagram);
+
+                    PDU p = DatagramParser.processDatagram(datagram);
+                    System.out.println("Processed: \n"  + p.toString());
                     r.datagrams.remove(0);
                     r.pdus.add(p);
                     r.pduArrived.signalAll();
-
+                    r.seqToPdu.put(p.getSeqNumber(),p);
+                    Condition c = r.seqToCondition.get(p.getSeqNumber());
+                    if (c != null)
+                        c.signal();
                 } catch (InterruptedException | InvalidTypeOfDatagram | InvalidCRCException e) {
                     e.printStackTrace();
                 } finally {

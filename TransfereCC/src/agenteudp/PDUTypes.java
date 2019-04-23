@@ -8,6 +8,7 @@ public class PDUTypes {
     public static final byte C_CONNECTION_REQUEST = 1;
     public static final byte C_AUTHENTICATION_REQUEST = 2;
     public static final byte C_CONNECTION_TERMINATION = 3;
+    public static final byte C_KEY_EXCHANGE = 4;
 
     public static final byte MANAGEMENT = 1;
 

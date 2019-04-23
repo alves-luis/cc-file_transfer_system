@@ -7,16 +7,16 @@ import agenteudp.Sender;
 import agenteudp.control.Ack;
 import agenteudp.control.ConnectionRequest;
 import agenteudp.control.ConnectionTermination;
+import agenteudp.control.KeyExchange;
 import agenteudp.data.BlockData;
 import agenteudp.data.FirstBlockData;
 import agenteudp.management.FileID;
+import security.Keys;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.security.Key;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -26,12 +26,12 @@ public class Client implements Runnable {
 
     private Sender sender;
     private Receiver receiver;
-    private State state ;
+    private State state;
 
     public Client(int destPort) {
-        this.sender = new Sender(Sender.DEFAULT_PORT, destPort);
-        this.receiver = new Receiver(Receiver.DEFAULT_PORT);
         this.state = new State();
+        this.receiver = new Receiver(Receiver.DEFAULT_PORT, null, state.getKeys());
+        this.sender = new Sender(Sender.DEFAULT_PORT, destPort, state.getKeys());
     }
 
 
@@ -40,7 +40,7 @@ public class Client implements Runnable {
         receiver.setExpectedIP(state.getSenderIP());
 
         ConnectionRequest request = new ConnectionRequest(state.genNewSeqNumber());
-        boolean success = sendPacketWithAck(request);
+        boolean success = sendPacketWithResponse(request);
 
         if (success) {
             state.setConectionEstablished();
@@ -53,7 +53,7 @@ public class Client implements Runnable {
 
     public boolean endConnection() {
         ConnectionTermination ending = new ConnectionTermination(state.genNewSeqNumber());
-        boolean success = sendPacketWithAck(ending);
+        boolean success = sendPacketWithResponse(ending);
         if (success) {
             state.setConectionEnded();
             return true;
@@ -183,11 +183,11 @@ public class Client implements Runnable {
 
     /**
      * This method, given a packet, keeps sending it until
-     * it receives an ack, or gives up if timed out
+     * it receives an ack or keyexchange, or gives up if timed out
      * @param packet packet to send and wait for ack
      * @return true if packet sent and received an ack
      */
-    private boolean sendPacketWithAck(PDU packet) {
+    private boolean sendPacketWithResponse(PDU packet) {
         int num_tries = 3;
         boolean timedOut = false;
         while(num_tries > 0 && !timedOut) {
@@ -207,8 +207,22 @@ public class Client implements Runnable {
                         return true;
                     }
                 }
+                else if (response instanceof KeyExchange) {
+                    if (!state.isSentAESKey())
+                        sendAESKey((KeyExchange) response);
+                    return true;
+                }
             }
         }
         return false;
+    }
+
+    private boolean sendAESKey(KeyExchange keyEx) {
+        byte[] encryptedAES = state.encryptAESKey(keyEx.getKey());
+        KeyExchange packetWithAES = new KeyExchange(state.genNewSeqNumber(),encryptedAES);
+        receiver.activateAESKeyEncryption();
+        boolean result = sendPacketWithResponse(packetWithAES);
+        sender.activateAESKeyEncryption();
+        return result;
     }
 }

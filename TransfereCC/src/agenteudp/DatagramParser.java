@@ -1,9 +1,6 @@
 package agenteudp;
 
-import agenteudp.control.Ack;
-import agenteudp.control.AuthenticationRequest;
-import agenteudp.control.ConnectionRequest;
-import agenteudp.control.ConnectionTermination;
+import agenteudp.control.*;
 import agenteudp.data.BlockData;
 import agenteudp.data.FirstBlockData;
 import agenteudp.management.FileID;
@@ -60,6 +57,9 @@ public class DatagramParser {
                 return ConnectionRequest.degeneratePDU(data);
             case PDUTypes.C_CONNECTION_TERMINATION:
                 return ConnectionTermination.degeneratePDU(data);
+            case PDUTypes.C_KEY_EXCHANGE:
+                return KeyExchange.degeneratePDU(data);
+
         }
         return null;
     }

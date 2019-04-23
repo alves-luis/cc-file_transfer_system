@@ -1,5 +1,7 @@
 package transferecc;
 
+import security.Keys;
+
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Instant;
@@ -21,11 +23,14 @@ public class State {
     private long fileSize;
     private byte[] hashOfFile;
     private int offset;
+    private Keys communicationKeys;
+    private boolean sentAesKey;
 
     public State() {
         this.seqNumber = Math.abs(new Random().nextLong());
         this.piecesOfFile = new TreeMap<>();
         this.offset = 0;
+        this.communicationKeys = new Keys();
     }
 
     public long genNewSeqNumber() {
@@ -103,5 +108,33 @@ public class State {
 
     public void setConectionEnded() {
         this.conectionEstablished = false;
+    }
+
+    public void setAESKey(byte[] aesKey) {
+        this.communicationKeys.setAESKey(aesKey);
+    }
+
+    public byte[] encryptAESKey(byte[] pubKey) {
+        return this.communicationKeys.encryptRSA(pubKey);
+    }
+
+    public byte[] getRSAPublicKey() {
+        return this.communicationKeys.getRSAPublicKey();
+    }
+
+    public byte[] decryptWithMyRSA(byte[] data) {
+        return this.communicationKeys.decryptRSA(data);
+    }
+
+    public void sentAESKey() {
+        this.sentAesKey = true;
+    }
+
+    public boolean isSentAESKey() {
+        return this.sentAesKey;
+    }
+
+    public Keys getKeys() {
+        return this.communicationKeys;
     }
 }
