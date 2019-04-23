@@ -16,6 +16,8 @@ import security.Keys;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.security.Key;
 import java.util.Map;
 import java.util.TreeMap;
@@ -26,24 +28,32 @@ public class Client implements Runnable {
 
     private Sender sender;
     private Receiver receiver;
-    private State state;
+    private ClientState state;
+    private Keys cryptoKeys;
 
-    public Client(int destPort) {
-        this.state = new State();
-        this.receiver = new Receiver(Receiver.DEFAULT_PORT, null, state.getKeys());
-        this.sender = new Sender(Sender.DEFAULT_PORT, destPort, state.getKeys());
+    public Client(String serverIP, int destPort) {
+        try {
+            this.state = new ClientState(InetAddress.getByName(serverIP),destPort);
+            this.cryptoKeys = new Keys();
+            this.receiver = new Receiver(Receiver.DEFAULT_PORT, null, cryptoKeys);
+            this.sender = new Sender(Sender.DEFAULT_PORT, destPort, cryptoKeys);
+        }
+        catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+
     }
 
 
     public boolean startConnection(String destIP) {
-        state.setSenderIP(destIP);
-        receiver.setExpectedIP(state.getSenderIP());
+        state.setServerIP(destIP);
+        receiver.setExpectedIP(state.getServerIP());
 
-        ConnectionRequest request = new ConnectionRequest(state.genNewSeqNumber());
+        ConnectionRequest request = new ConnectionRequest(state.genNewSequenceNumber());
         boolean success = sendPacketWithResponse(request);
 
         if (success) {
-            state.setConectionEstablished();
+            state.setConnected();
             return true;
         }
         else {
@@ -52,10 +62,10 @@ public class Client implements Runnable {
     }
 
     public boolean endConnection() {
-        ConnectionTermination ending = new ConnectionTermination(state.genNewSeqNumber());
+        ConnectionTermination ending = new ConnectionTermination(state.genNewSequenceNumber());
         boolean success = sendPacketWithResponse(ending);
         if (success) {
-            state.setConectionEnded();
+            state.setDisconnected();
             return true;
         }
         else {
@@ -65,17 +75,18 @@ public class Client implements Runnable {
 
     public boolean requestFile(long fileID) {
         int num_tries = 3;
-        long timeout = 36000;
+        long timeout = state.getRetransmissionTimeout();
 
-        FileID requestFile = new FileID(state.genNewSeqNumber(), PDUTypes.M_FILE, fileID);
-        sender.sendDatagram(requestFile, state.getSenderIP());
+        FileID requestFile = new FileID(state.genNewSequenceNumber(), PDUTypes.M_FILE, fileID);
+        state.setTransferingFile();
+        sender.sendDatagram(requestFile, state.getServerIP());
         while (num_tries > 0) {
             PDU response = receiver.getFIFO(timeout);
             if (response == null) { // timed out
                 num_tries--;
                 continue;
             }
-            state.receivedDatagram();
+            state.receivedDatagram(response.getTimeStamp());
 
             if (response instanceof FirstBlockData) {
                 receivedFirstBlock(response);
@@ -88,15 +99,10 @@ public class Client implements Runnable {
 
     public void receivedFirstBlock(PDU response){
         FirstBlockData firstBlock = (FirstBlockData) response;
-        state.setFileSize(firstBlock.getFileSize());
-        byte[] content = firstBlock.getData();
-        byte[] hash = firstBlock.getHash();
-        state.setHashOfFile(hash);
-        state.sentPieceOfFile(content, 0);
+        state.receivedFirstBlockOfFile(firstBlock);
         sendAck(firstBlock);
-        if (content.length==state.getFileSize()){
+        if (state.missingFilePieces()){
             createFile();
-
         }
         else {
             receiveBlocksLeft();
@@ -105,9 +111,9 @@ public class Client implements Runnable {
 
 
     public void receiveBlocksLeft(){
-        int received=state.getTreeMap().get(0).length;
+        long received=state.getLengthOfFileReceived();
         int num_tries = 3;
-        long timeout = 36000;
+        long timeout = state.getRetransmissionTimeout();
 
         while(received!=this.state.getFileSize()){
 
@@ -117,7 +123,7 @@ public class Client implements Runnable {
                 continue;
             }
 
-            state.receivedDatagram();
+            state.receivedDatagram(response.getTimeStamp());
 
             if (response instanceof BlockData) {
                received+= receivedBlock(response);
@@ -131,21 +137,19 @@ public class Client implements Runnable {
     public int receivedBlock(PDU response){
 
         BlockData block = (BlockData) response;
-        int offset = block.getOffset();
-        byte[] content = block.getData();
-        state.sentPieceOfFile(content, offset);
+        int sizeOfBlock = state.receivedBlockOfFile(block);
         sendAck(block);
-        return content.length;
+        return sizeOfBlock;
     }
 
     public void sendAck(PDU block){
-        Ack ack = new Ack(state.genNewSeqNumber(), block.getSeqNumber());
-        sender.sendDatagram(ack, state.getSenderIP());
+        Ack ack = new Ack(state.genNewSequenceNumber(), block.getSeqNumber());
+        sender.sendDatagram(ack, state.getServerIP());
     }
 
     public void createFile(){
 
-        byte[] result= concatenate();
+        byte[] result= state.concatenateFile();
         System.out.println("SIZE " + result.length);
        // String name= Long.toString(this.state.getFileID());
         File file= new File ("recebiIsto.txt");
@@ -158,21 +162,6 @@ public class Client implements Runnable {
         catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-
-    private byte[] concatenate() {
-
-        int size= (int) this.state.getFileSize();
-        byte[] result = new byte[size];
-
-        TreeMap<Integer,byte[]> file = this.state.getTreeMap();
-        for(Map.Entry<Integer,byte[]> entry : file.entrySet()) {
-            Integer key = entry.getKey();
-            byte[] value = entry.getValue();
-            System.arraycopy(value,0,result,key,value.length);
-        }
-        return result;
     }
 
 
@@ -191,8 +180,8 @@ public class Client implements Runnable {
         int num_tries = 3;
         boolean timedOut = false;
         while(num_tries > 0 && !timedOut) {
-            sender.sendDatagram(packet,state.getSenderIP());
-            PDU response = receiver.getFIFO(Server.DEFAULT_TIMEOUT);
+            sender.sendDatagram(packet,state.getServerIP());
+            PDU response = receiver.getFIFO(state.getRetransmissionTimeout());
             if (response == null) {
                 if (num_tries != 1)
                     num_tries--;
@@ -200,7 +189,7 @@ public class Client implements Runnable {
                     timedOut = true;
             }
             else {
-                state.receivedDatagram();
+                state.receivedDatagram(response.getTimeStamp());
                 if (response instanceof Ack) {
                     Ack ack = (Ack) response;
                     if (ack.getAck() == packet.getSeqNumber()) {
@@ -218,11 +207,12 @@ public class Client implements Runnable {
     }
 
     private boolean sendAESKey(KeyExchange keyEx) {
-        byte[] encryptedAES = state.encryptAESKey(keyEx.getKey());
-        KeyExchange packetWithAES = new KeyExchange(state.genNewSeqNumber(),encryptedAES);
+        byte[] encryptedAES = cryptoKeys.encryptRSA(keyEx.getKey());
+        KeyExchange packetWithAES = new KeyExchange(state.genNewSequenceNumber(),encryptedAES);
         receiver.activateAESKeyEncryption();
         boolean result = sendPacketWithResponse(packetWithAES);
         sender.activateAESKeyEncryption();
+        state.sentAESKey();
         return result;
     }
 }

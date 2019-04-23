@@ -12,13 +12,16 @@ public class App {
             System.out.println(Menu.insuficientArguments(args.length));
         else {
             if (args[0].equals("client")) {
-                Client c = new Client(7777);
+                Client c = new Client("localhost",7777);
                 new Thread(c).start();
 
                 boolean success = c.startConnection("localhost");
-
-                c.requestFile(123);
-                c.endConnection();
+                System.out.println(success);
+                if (success)
+                    success = c.requestFile(123);
+                System.out.println(success);
+                if (success)
+                    c.endConnection();
 
             }
             if (args[0].equals("server")) {
@@ -27,6 +30,9 @@ public class App {
 
                 boolean serverSuccess = s.receiveConnectionRequest("localhost");
                 boolean file = s.receiveFileRequest();
+                System.out.println(file);
+                boolean end = s.receiveConnectionTermination();
+                System.out.println(end);
             }
 
         }

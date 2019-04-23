@@ -119,10 +119,31 @@ public class Receiver implements Runnable {
             lock.lock();
             long timeLeft = timeout;
             while(this.pdus.isEmpty() || timeLeft > 0) {
-                timeLeft = this.pduArrived.awaitNanos(timeout);
+                timeLeft = this.pduArrived.awaitNanos(timeLeft);
             }
+            if (this.pdus.size() > 0)
+                return this.pdus.remove(0);
+            else
+                return null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        finally {
+            lock.unlock();
+        }
+        return null;
+    }
 
-            return this.pdus.remove(0);
+    public PDU getFIFO() {
+        try {
+            lock.lock();
+            while(this.pdus.isEmpty()) {
+                this.pduArrived.await();
+            }
+            if (this.pdus.size() > 0)
+                return this.pdus.remove(0);
+            else
+                return null;
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

@@ -10,7 +10,6 @@ import agenteudp.control.KeyExchange;
 import agenteudp.data.BlockData;
 import agenteudp.data.FirstBlockData;
 import agenteudp.management.FileID;
-import security.Keys;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,7 +18,6 @@ import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 import java.util.HashMap;
 
 public class Server implements Runnable {
@@ -55,7 +53,7 @@ public class Server implements Runnable {
         try {
             long seqNumber = state.genNewSeqNumber();
             byte[] fileBytes = Files.readAllBytes(file.toPath());
-            byte[] hashOfFile = getHashValue(fileBytes);
+            byte[] hashOfFile = FirstBlockData.getHash(fileBytes);
             long fileSize = file.length();
             long fileID = DEFAULT_FILE_ID;
 
@@ -66,13 +64,13 @@ public class Server implements Runnable {
             byte[] data = getFirstChunkOfData(fileBytes);
             state.sentPieceOfFile(data,0);
             FirstBlockData header = new FirstBlockData(seqNumber,fileID,fileSize,hashOfFile,data);
-
             boolean sent = sendPacketWithResponse(header);
             // if need to send more pieces
             while (state.getOffset() < state.getFileSize()) {
                 byte[] filePiece = getChunkOfData(fileBytes,state.getOffset());
-                this.sendFilePiece(filePiece,state.getOffset());
+                sent = this.sendFilePiece(filePiece,state.getOffset());
             }
+            return sent;
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -137,7 +135,7 @@ public class Server implements Runnable {
     public boolean receiveConnectionRequest(String ip) {
         int num_tries = 3;
         while(num_tries > 0) {
-            PDU p = receiver.getFIFO(Server.DEFAULT_TIMEOUT);
+            PDU p = receiver.getFIFO();
             try {
                 InetAddress address = InetAddress.getByName(ip);
                 if (p instanceof ConnectionRequest) {
@@ -156,23 +154,6 @@ public class Server implements Runnable {
             }
         }
         return false;
-    }
-
-    /** Given an array of bytes, returns its file hash using SHA-1
-     * @param data array of bytes to generate the hash
-     * @return file hash
-     */
-    private static byte[] getHashValue(byte[] data){
-        byte[] sol = null;
-        try{
-            MessageDigest md;
-            md = MessageDigest.getInstance("SHA-1");
-            sol = md.digest(data);
-        }
-        catch(NoSuchAlgorithmException e){
-            System.err.println(e.toString());
-        }
-        return sol;
     }
 
     /**
@@ -210,7 +191,7 @@ public class Server implements Runnable {
     public boolean receiveFileRequest() {
         int num_tries = 3;
         while(num_tries > 0) {
-            PDU p = receiver.getFIFO(Server.DEFAULT_TIMEOUT);
+            PDU p = receiver.getFIFO();
             state.receivedDatagram();
             if (p instanceof FileID) {
                 FileID packet = (FileID) p;
@@ -218,8 +199,7 @@ public class Server implements Runnable {
                 String filePath = this.files.get(fileId);
                 if (filePath != null) {
                     File f = new File(filePath);
-                    this.sendFile(f);
-                    return true;
+                    return this.sendFile(f);
                 }
                 else
                     return false;
