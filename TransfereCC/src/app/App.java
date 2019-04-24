@@ -18,7 +18,7 @@ public class App {
                 boolean success = c.startConnection("localhost");
                 System.out.println(success);
                 if (success)
-                    success = c.requestFile(123);
+                    success = c.requestFile("programa_teste.txt");
                 System.out.println(success);
                 if (success)
                     c.endConnection();

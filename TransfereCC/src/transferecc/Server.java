@@ -34,12 +34,9 @@ public class Server implements Runnable {
     private Sender sender;
     private Receiver receiver;
     private State state;
-    private HashMap<Long,String> files;
 
     public Server() {
         this.state = new State();
-        this.files = new HashMap<>();
-        this.files.put((long) 123,"programa_teste.txt"); // testing purposes
         this.receiver = new Receiver(Server.DEFAULT_RECEIVING_PORT, null,state.getKeys());
         this.sender = new Sender(Server.DEFAULT_SENDING_PORT,DEFAULT_CLIENT_PORT, state.getKeys());
     }
@@ -196,8 +193,7 @@ public class Server implements Runnable {
             state.receivedDatagram();
             if (p instanceof FileID) {
                 FileID packet = (FileID) p;
-                long fileId = packet.getFileID();
-                String filePath = this.files.get(fileId);
+                String filePath = packet.getFileID();
                 if (filePath != null) {
                     File f = new File(filePath);
                     return this.sendFile(f);

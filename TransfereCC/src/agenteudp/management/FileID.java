@@ -4,6 +4,7 @@ import agenteudp.PDU;
 import agenteudp.PDUTypes;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -12,9 +13,9 @@ public class FileID extends PDUManagement {
     public static byte LISTING = 0;
     public static byte FILE = 1;
 
-    private long fileID;
+    private String fileID;
 
-    public FileID(long seqNumber, byte direction, long file) {
+    public FileID(long seqNumber, byte direction, String file) {
         super(seqNumber,PDUTypes.M_FILE, direction );
         this.fileID = file;
     }
@@ -22,7 +23,7 @@ public class FileID extends PDUManagement {
     @Override
     public byte[] generatePDU() {
         byte[] basePDU = super.generatePDU();
-        byte[] fileNameAsBytes = ByteBuffer.allocate(8).putLong(this.fileID).array();
+        byte[] fileNameAsBytes = this.fileID.getBytes(Charset.forName("UTF-8"));
 
         byte[] finalPDU = new byte[basePDU.length + fileNameAsBytes.length + 1];
 
@@ -38,7 +39,11 @@ public class FileID extends PDUManagement {
 
     public static FileID degeneratePDU(byte[] data) {
         PDU pdu = PDU.degeneratePDU(data);
-        long file = ByteBuffer.wrap(data,BASE_PDU_SIZE + 1,8).getLong();
+        int lengthOfFileID = data.length - (BASE_PDU_SIZE + 1);
+
+        byte[] encodedMsg = new byte[lengthOfFileID];
+        System.arraycopy(data,BASE_PDU_SIZE + 1,encodedMsg,0,lengthOfFileID);
+        String file = new String(encodedMsg, Charset.forName("UTF-8"));
         byte direction = data[BASE_PDU_SIZE];
         FileID fileID = new FileID(pdu.getSeqNumber(), direction, file);
         return fileID;
@@ -53,7 +58,7 @@ public class FileID extends PDUManagement {
         return sb.toString();
     }
 
-    public long getFileID() {
+    public String getFileID() {
         return this.fileID;
     }
 }

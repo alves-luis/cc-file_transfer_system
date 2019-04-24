@@ -73,7 +73,7 @@ public class Client implements Runnable {
         }
     }
 
-    public boolean requestFile(long fileID) {
+    public boolean requestFile(String fileID) {
         int num_tries = 3;
         long timeout = state.getRetransmissionTimeout();
 
