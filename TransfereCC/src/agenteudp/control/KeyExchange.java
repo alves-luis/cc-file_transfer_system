@@ -47,6 +47,8 @@ public class KeyExchange extends PDUControl {
 
     public String toString() {
         String s = super.toString();
-        return s + Arrays.toString(key) + "\n";
+        StringBuilder sb = new StringBuilder();
+        sb.append(s).append("Key: ").append(Arrays.toString(key)).append("\n");
+        return sb.toString();
     }
 }

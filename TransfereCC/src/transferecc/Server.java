@@ -102,8 +102,9 @@ public class Server implements Runnable {
         boolean timedOut = false;
         while(num_tries > 0 && !timedOut) {
             sender.sendDatagram(packet,state.getSenderIP());
-            PDU response = receiver.getFIFO(Server.DEFAULT_TIMEOUT);
+            PDU response = receiver.getAck(packet.getSeqNumber(),Server.DEFAULT_TIMEOUT);
             if (response == null) {
+                System.out.println("Number of tries: " + num_tries + "\n");
                 if (num_tries != 1)
                     num_tries--;
                 else

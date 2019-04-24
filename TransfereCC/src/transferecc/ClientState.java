@@ -12,34 +12,49 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 public class ClientState {
 
+    /* Used for computing retransmission timeout */
     private static float ALPHA = (float) 0.125;
+    /* Used for computing retransmission timeout */
     private static float BETA = (float) 0.25;
 
+    /* Retransmission timeout in ms */
     private long retransmission_timeout;
+    /* Round-trip-time value (smoothed) */
     private float smoothed_round_trip_time;
+    /* Variation of rtt */
     private float round_trip_time_variation;
 
+    /* IP of the target server */
     private InetAddress serverIP;
+    /* Port of the target server */
     private int serverPort;
 
-    private int sequence_number;
+    /* Last sent sequence number*/
+    private long sequence_number;
 
+    /* Boolean to check if valid connection */
     private volatile boolean connected;
+    /* Boolean to check if currently transfering file */
     private volatile boolean transferingFile;
+    /* Boolean to check if should encrypt data */
     private boolean sentAESKey;
 
+    /* Maps the received pieces of files to their offset */
     private ConcurrentSkipListMap<Integer,byte[]> piecesOfFile;
+    /* File ID */
     private String fileID;
+    /* Hash of the receiving file */
     private byte[] hashOfFile;
+    /* Size of the receiving file*/
     private long sizeOfFile;
 
     public ClientState(InetAddress serverIP, int serverPort) {
-        this.retransmission_timeout = 3000;
+        this.retransmission_timeout = 1000;
         this.smoothed_round_trip_time = 0;
         this.round_trip_time_variation = 0;
         this.serverIP = serverIP;
         this.serverPort = serverPort;
-        this.sequence_number = new Random().nextInt();
+        this.sequence_number = new Random().nextLong();
         this.connected = false;
         this.transferingFile = false;
         this.sentAESKey = false;
@@ -48,10 +63,18 @@ public class ClientState {
         this.hashOfFile = null;
     }
 
-    public int genNewSequenceNumber() {
+    /**
+     * Generates a new sequence number
+     * @return sequence number
+     */
+    public long genNewSequenceNumber() {
         return this.sequence_number++;
     }
 
+    /**
+     * Returns the IP of the server containing the file
+     * @return address of the server
+     */
     public InetAddress getServerIP() {
         return this.serverIP;
     }

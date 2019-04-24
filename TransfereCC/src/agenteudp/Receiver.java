@@ -31,29 +31,6 @@ public class Receiver implements Runnable {
     private boolean aesKeyEncryption; // if should use aesKeyDecryption;
     private Keys communicationKeys;
 
-    /**
-     * DEPRECATED
-     * @param port
-     */
-    public Receiver(int port) {
-        try {
-            this.socket = new DatagramSocket(port);
-            this.expectedSize = 2048;
-            this.pdus = new ArrayList<>();
-            this.datagrams = new ArrayList<>();
-            this.lock = new ReentrantLock();
-            this.pduArrived = lock.newCondition();
-            this.datagramArrived = lock.newCondition();
-            this.expectedIP = null;
-            this.buffer = new byte[expectedSize];
-            this.seqToCondition = new ConcurrentHashMap<>();
-            this.seqToPdu = new ConcurrentHashMap<>();
-            this.aesKeyEncryption = false;
-            this.communicationKeys = new Keys();
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }
-    }
 
     public Receiver(int defaultPort, InetAddress receiverIP, Keys k) {
         try {
@@ -195,12 +172,12 @@ public class Receiver implements Runnable {
         this.seqToCondition.put(seqNumber,c);
         try {
             lock.lock();
-            long timeLeft = timeout * 1000000; // in nano seconds
+            long timeLeft = timeout * 1000; // in nano seconds
             PDU response = null;
-            while(response == null || timeLeft > 0) {
+            while(!this.seqToPdu.containsKey(seqNumber) && timeLeft > 0) {
                 timeLeft = this.pduArrived.awaitNanos(timeLeft);
-                response = this.seqToPdu.get(seqNumber);
             }
+            response = this.seqToPdu.get(seqNumber);
 
             return response;
         } catch (InterruptedException e) {

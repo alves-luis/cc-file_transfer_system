@@ -87,7 +87,6 @@ public class Client implements Runnable {
                 continue;
             }
             state.receivedDatagram(response.getTimeStamp());
-
             if (response instanceof FirstBlockData) {
                 receivedFirstBlock(response);
                 return true;

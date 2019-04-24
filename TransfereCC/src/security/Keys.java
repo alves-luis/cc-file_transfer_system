@@ -79,7 +79,6 @@ public class Keys {
             Cipher cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.ENCRYPT_MODE,key);
             encryptedData = cipher.doFinal(this.aesKey.getEncoded());
-            System.out.println("AES: " + Arrays.toString(this.aesKey.getEncoded()));
         } catch (InvalidKeySpecException | InvalidKeyException | NoSuchAlgorithmException | IllegalBlockSizeException | BadPaddingException | NoSuchPaddingException ex) {
             System.err.println(ex.toString());
         }
