@@ -20,6 +20,11 @@ public class FileID extends PDUManagement {
         this.fileID = file;
     }
 
+    public FileID(PDU p, byte direction, String file) {
+        super(p, PDUTypes.M_FILE, direction);
+        this.fileID = file;
+    }
+
     @Override
     public byte[] generatePDU() {
         byte[] basePDU = super.generatePDU();
@@ -45,7 +50,7 @@ public class FileID extends PDUManagement {
         System.arraycopy(data,BASE_PDU_SIZE + 1,encodedMsg,0,lengthOfFileID);
         String file = new String(encodedMsg, Charset.forName("UTF-8"));
         byte direction = data[BASE_PDU_SIZE];
-        FileID fileID = new FileID(pdu.getSeqNumber(), direction, file);
+        FileID fileID = new FileID(pdu, direction, file);
         return fileID;
     }
 

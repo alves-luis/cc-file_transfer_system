@@ -6,6 +6,7 @@ import agenteudp.data.FirstBlockData;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -46,7 +47,7 @@ public class ClientState {
     /* Hash of the receiving file */
     private byte[] hashOfFile;
     /* Size of the receiving file*/
-    private long sizeOfFile;
+    private int sizeOfFile;
 
     public ClientState(InetAddress serverIP, int serverPort) {
         this.retransmission_timeout = 1000;
@@ -79,6 +80,10 @@ public class ClientState {
         return this.serverIP;
     }
 
+    /**
+     * Sets the IP of the target server
+     * @param ip string representation of the server IP
+     */
     public void setServerIP(String ip) {
         try {
             this.serverIP = InetAddress.getByName(ip);
@@ -87,6 +92,11 @@ public class ClientState {
         }
     }
 
+    /**
+     * Given a timestamp, representing the epoch in ms when the datagram received was generated,
+     * updates the state variables to set the new retransmission timeout.
+     * @param timestamp when was the datagram sent
+     */
     public synchronized void receivedDatagram(long timestamp) {
         long now = Instant.now().toEpochMilli();
         long r = now - timestamp;
@@ -111,82 +121,130 @@ public class ClientState {
         }
     }
 
+    /**
+     * Method that returns the retransmission timeout
+     * @return rto
+     */
     public synchronized long getRetransmissionTimeout() {
         return this.retransmission_timeout;
     }
 
+    /**
+     * Getter for the fileID
+     * @return fileID
+     */
+    public String getFileID() {
+        return this.fileID;
+    }
+
+    /**
+     * Use this method if connection was established to the server
+     */
     public void setConnected() {
         this.connected = true;
     }
 
+    /**
+     * Use this method if connection was terminated to the server
+     */
     public void setDisconnected() {
         this.connected = false;
     }
 
+    /**
+     * Use this method if is currently transfering a file
+     */
     public void setTransferingFile() {
         this.transferingFile = true;
     }
 
+    /**
+     * If received first block of file, update the state with its content
+     * @param block first block of data
+     */
     public void receivedFirstBlockOfFile(FirstBlockData block) {
         this.sizeOfFile = block.getFileSize();
         this.hashOfFile = block.getHash();
         this.piecesOfFile.put(0,block.getData());
+        this.fileID = block.getFileId();
     }
 
+    /**
+     * If received block of file (that isn't the first one), update the state with its content
+     * @param block received block
+     * @return length of piece of file received
+     */
     public int receivedBlockOfFile(BlockData block) {
         byte[] data = block.getData();
         this.piecesOfFile.put(block.getOffset(),data);
         return data.length;
     }
 
-    public byte[] concatenateFile() {
-        byte[] finalFile = new byte[(int) this.sizeOfFile];
+    /**
+     * Returns the concatened file pieces that have been received
+     * If hasn't received all the pieces, throws exception
+     * @return byte[] containing all the file pieces in their order
+     */
+    public byte[] concatenateFile() throws FileNotCompleteException, SHA1FileException {
+        if (missingFilePieces())
+            throw new FileNotCompleteException(this.sizeOfFile, this.getLengthOfFileReceived());
+
+        byte[] finalFile = new byte[this.sizeOfFile];
         for(Map.Entry<Integer,byte[]> entry : this.piecesOfFile.entrySet()) {
             Integer key = entry.getKey();
             byte[] value = entry.getValue();
             System.arraycopy(value,0,finalFile,key,value.length);
         }
+
+        // calculate hash of concatenated file!
+        byte[] hash = FirstBlockData.getHash(finalFile);
+        if (!Arrays.equals(hash,this.hashOfFile))
+            throw new SHA1FileException(this.hashOfFile,hash);
+
         return finalFile;
     }
 
-    public long getLengthOfFileReceived() {
-        long sum = 0;
+    /**
+     * Returns the sum of the length of the pieces of file that has received
+     * @return length of file received
+     */
+    public int getLengthOfFileReceived() {
+        int sum = 0;
         for(byte[] pieces : this.piecesOfFile.values()) {
             sum += pieces.length;
         }
         return sum;
     }
 
-    public long getFileSize() {
+    /**
+     * Returns the size of the file
+     * @return filesize
+     */
+    public int getFileSize() {
         return this.sizeOfFile;
     }
 
+    /**
+     * Returns true if is missing file pieces
+     * @return boolean
+     */
     public boolean missingFilePieces() {
-        return this.getLengthOfFileReceived() == this.sizeOfFile;
+        return this.getLengthOfFileReceived() != this.sizeOfFile;
     }
 
+    /**
+     * Returns true if already sent AES key
+     * @return boolean
+     */
     public boolean isSentAESKey() {
         return this.sentAESKey;
     }
 
+    /**
+     * Updates the state after sending AES Key
+     */
     public void sentAESKey() {
         this.sentAESKey = true;
     }
-
-    public static void main(String[] args) throws UnknownHostException {
-        ClientState cs = new ClientState(InetAddress.getByName("localhost"),123);
-        long fakeNow = Instant.now().toEpochMilli() - 500;
-        cs.receivedDatagram(fakeNow);
-        long rto = cs.getRetransmissionTimeout();
-        System.out.println("RTO: " + rto);
-        cs.receivedDatagram(Instant.now().toEpochMilli());
-        rto = cs.getRetransmissionTimeout();
-        System.out.println("RTO: " + rto);
-        cs.receivedDatagram(Instant.now().toEpochMilli());
-        rto = cs.getRetransmissionTimeout();
-        System.out.println("RTO: " + rto);
-    }
-
-
 
 }

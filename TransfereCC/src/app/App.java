@@ -16,12 +16,15 @@ public class App {
                 new Thread(c).start();
 
                 boolean success = c.startConnection("localhost");
-                System.out.println(success);
-                if (success)
+                System.out.println("Started connection? " + success);
+                if (success) {
                     success = c.requestFile("programa_teste.txt");
-                System.out.println(success);
-                if (success)
-                    c.endConnection();
+                    System.out.println("File requested? " + success);
+                }
+                if (success) {
+                    success = c.endConnection();
+                    System.out.println("Ended connection? " + success);
+                }
 
             }
             if (args[0].equals("server")) {
@@ -30,9 +33,9 @@ public class App {
 
                 boolean serverSuccess = s.receiveConnectionRequest("localhost");
                 boolean file = s.receiveFileRequest();
-                System.out.println(file);
+                System.out.println( "Received file request? " + file);
                 boolean end = s.receiveConnectionTermination();
-                System.out.println(end);
+                System.out.println("Ended connection? " + end);
             }
 
         }

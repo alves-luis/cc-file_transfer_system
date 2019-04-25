@@ -16,9 +16,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
 
 public class Server implements Runnable {
 
@@ -29,7 +26,7 @@ public class Server implements Runnable {
     private static int DEFAULT_RECEIVING_PORT = 7777;
     private static int DEFAULT_CLIENT_PORT = 5555;
     private static int DEFAULT_HEADER_DATA_SIZE = 512;
-    private static long DEFAULT_FILE_ID = 1;
+    private static String DEFAULT_FILE_ID = "programa_teste.txt";
 
     private Sender sender;
     private Receiver receiver;
@@ -51,8 +48,8 @@ public class Server implements Runnable {
             long seqNumber = state.genNewSeqNumber();
             byte[] fileBytes = Files.readAllBytes(file.toPath());
             byte[] hashOfFile = FirstBlockData.getHash(fileBytes);
-            long fileSize = file.length();
-            long fileID = DEFAULT_FILE_ID;
+            int fileSize = Math.toIntExact(file.length());
+            String fileID = DEFAULT_FILE_ID;
 
             state.setFile(fileID);
             state.setFileSize(fileSize);

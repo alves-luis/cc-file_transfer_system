@@ -19,7 +19,7 @@ public class State {
     private int receiverPort;
     private long lastReceivedDatagram;
     private TreeMap<Integer,byte[]> piecesOfFile;
-    private long fileID;
+    private String fileID;
     private long fileSize;
     private byte[] hashOfFile;
     private int offset;
@@ -64,7 +64,7 @@ public class State {
      * @param id
      * @return
      */
-    public void setFile(long id) {
+    public void setFile(String id) {
         this.fileID = id;
     }
 
@@ -102,7 +102,7 @@ public class State {
         return this.offset;
     }
 
-    public long getFileID() {
+    public String getFileID() {
         return this.fileID;
     }
 

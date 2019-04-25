@@ -94,7 +94,7 @@ public class Receiver implements Runnable {
     public PDU getFIFO(long timeout) {
         try {
             lock.lock();
-            long timeLeft = timeout;
+            long timeLeft = timeout * 1000;
             while(this.pdus.isEmpty() || timeLeft > 0) {
                 timeLeft = this.pduArrived.awaitNanos(timeLeft);
             }

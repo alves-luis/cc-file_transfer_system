@@ -21,6 +21,13 @@ public class PDU {
         this.timeStamp = Instant.now().toEpochMilli();
     }
 
+    public PDU(PDU p, byte type, byte subtype) {
+        this.seqNumber = p.getSeqNumber();
+        this.type = type;
+        this.subtype = subtype;
+        this.timeStamp = p.getTimeStamp();
+    }
+
     public byte[] generatePDU() {
         byte type = this.getType();
         byte subtype = this.getSubtype();

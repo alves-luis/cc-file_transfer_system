@@ -146,17 +146,20 @@ public class Client implements Runnable {
         sender.sendDatagram(ack, state.getServerIP());
     }
 
-    public void createFile(){
-
-        byte[] result= state.concatenateFile();
-        System.out.println("SIZE " + result.length);
-       // String name= Long.toString(this.state.getFileID());
-        File file= new File ("recebiIsto.txt");
-
+    private void createFile() {
         try{
+            byte[] result = state.concatenateFile();
+            File file= new File ("C_"+state.getFileID());
             FileOutputStream out= new FileOutputStream(file);
             out.write(result);
             out.flush();
+        }
+        catch (FileNotCompleteException e) {
+            System.err.println("Tried to create an incomplete file!" + e.toString());
+        }
+        catch (SHA1FileException e) {
+            System.err.println("Concatenated the file, but hash does not match! Asking for the file again!" + e.toString());
+            requestFile(state.getFileID());
         }
         catch (IOException e) {
             e.printStackTrace();

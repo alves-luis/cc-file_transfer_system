@@ -12,6 +12,11 @@ public abstract class PDUManagement extends PDU {
         this.direction = direction;
     }
 
+    public PDUManagement(PDU p, byte subtype, byte direction) {
+        super(p, PDUTypes.MANAGEMENT,subtype);
+        this.direction = direction;
+    }
+
     public byte getDirection() {
         return this.direction;
     }
