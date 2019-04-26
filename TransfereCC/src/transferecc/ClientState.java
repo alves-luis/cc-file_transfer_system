@@ -17,6 +17,8 @@ public class ClientState {
     private static float ALPHA = (float) 0.125;
     /* Used for computing retransmission timeout */
     private static float BETA = (float) 0.25;
+    /* Default number of retransmission attempts */
+    public static int DEFAULT_NUMBER_OF_TRIES = 5;
 
     /* Retransmission timeout in ms */
     private long retransmission_timeout;
@@ -119,6 +121,15 @@ public class ClientState {
         else if (retransmission_timeout > 60000) {
             retransmission_timeout = 60000;
         }
+    }
+
+    /**
+     * Method that updates the retransmission timeout value when times out
+     */
+    public synchronized void timedOut() {
+        retransmission_timeout *= 2;
+        if (retransmission_timeout > 60000)
+            retransmission_timeout = 60000;
     }
 
     /**

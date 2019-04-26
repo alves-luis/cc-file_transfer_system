@@ -1,5 +1,7 @@
 package agenteudp;
 
+import agenteudp.control.Ack;
+import agenteudp.control.KeyExchange;
 import security.Keys;
 
 import java.io.IOException;
@@ -28,6 +30,7 @@ public class Receiver implements Runnable {
     private ConcurrentHashMap<Long,PDU> seqToPdu;
     // is used to map all the received datagrams to given IP
     private ConcurrentHashMap<InetAddress,List<byte[]>> knownIpsToReceivedDatagrams;
+    private ConcurrentHashMap<InetAddress,List<PDU>> knownIpsToProcessedDatagrams;
     private boolean aesKeyEncryption; // if should use aesKeyDecryption;
     private Keys communicationKeys;
 
@@ -48,6 +51,7 @@ public class Receiver implements Runnable {
             this.expectedIP = receiverIP;
             this.buffer = new byte[expectedSize];
             this.knownIpsToReceivedDatagrams = new ConcurrentHashMap<>();
+            this.knownIpsToProcessedDatagrams = new ConcurrentHashMap<>();
             this.aesKeyEncryption = false;
             this.communicationKeys = k;
         }
@@ -94,7 +98,7 @@ public class Receiver implements Runnable {
     public PDU getFIFO(long timeout) {
         try {
             lock.lock();
-            long timeLeft = timeout * 1000;
+            long timeLeft = timeout * 1000000;
             while(this.pdus.isEmpty() || timeLeft > 0) {
                 timeLeft = this.pduArrived.awaitNanos(timeLeft);
             }
@@ -167,17 +171,20 @@ public class Receiver implements Runnable {
      * @param timeout number of milisseconds before timeout
      * @return ack or null, if timed out
      */
-    public PDU getAck(long seqNumber, long timeout) {
+    public Ack getAck(long seqNumber, long timeout) {
         Condition c = this.lock.newCondition();
         this.seqToCondition.put(seqNumber,c);
         try {
             lock.lock();
-            long timeLeft = timeout * 1000; // in nano seconds
-            PDU response = null;
+            long timeLeft = timeout * 1000000; // in nano seconds
+            Ack response = null;
             while(!this.seqToPdu.containsKey(seqNumber) && timeLeft > 0) {
                 timeLeft = this.pduArrived.awaitNanos(timeLeft);
             }
-            response = this.seqToPdu.get(seqNumber);
+            // if did not timeout, update ack to the processed ack
+            if (this.seqToPdu.containsKey(seqNumber)) {
+                response = (Ack) this.seqToPdu.remove(seqNumber);
+            }
 
             return response;
         } catch (InterruptedException e) {
@@ -189,8 +196,39 @@ public class Receiver implements Runnable {
         return null;
     }
 
+    /**
+     * Method that is used when is expecting a keyexchange packet
+     * returns either the keyexchange or null, if not a key exchange or timed out
+     * @param timeout timeout value in ms
+     * @return pdu
+     */
+    public KeyExchange getKeyExchange(long timeout) {
+        try {
+            lock.lock();
+            long timeoutInNanos = timeout * 1000000;
+            while(this.pdus.isEmpty() && timeoutInNanos > 0) {
+                timeoutInNanos = this.pduArrived.awaitNanos(timeoutInNanos);
+            }
+            if (this.pdus.size() > 0) {
+                PDU latest = this.pdus.remove(0);
+                if (latest instanceof KeyExchange)
+                    return (KeyExchange) latest;
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        finally {
+            lock.unlock();
+        }
+        return null;
+    }
+
     public void activateAESKeyEncryption() {
         this.aesKeyEncryption = true;
+    }
+
+    public void deactivateAESKeyEncryption() {
+        this.aesKeyEncryption = false;
     }
 
     /**
@@ -217,14 +255,18 @@ public class Receiver implements Runnable {
                         datagram = communicationKeys.decryptAES(datagram);
 
                     PDU p = DatagramParser.processDatagram(datagram);
-                    System.out.println("Processed: \n"  + p.toString());
+                    System.out.println("---- PROCESSED ----\n"  + p.toString());
                     r.datagrams.remove(0);
                     r.pdus.add(p);
                     r.pduArrived.signalAll();
-                    r.seqToPdu.put(p.getSeqNumber(),p);
-                    Condition c = r.seqToCondition.get(p.getSeqNumber());
-                    if (c != null)
-                        c.signal();
+                    // if it's an ack, alert the ack receiver
+                    if (p instanceof Ack) {
+                        Ack ack = (Ack) p;
+                        r.seqToPdu.put(ack.getAck(), ack);
+                        Condition c = r.seqToCondition.get(ack.getAck());
+                        if (c != null)
+                            c.signal();
+                    }
                 } catch (InterruptedException | InvalidTypeOfDatagram | InvalidCRCException e) {
                     e.printStackTrace();
                 } finally {

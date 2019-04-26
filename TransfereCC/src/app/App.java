@@ -15,7 +15,7 @@ public class App {
                 Client c = new Client("localhost",7777);
                 new Thread(c).start();
 
-                boolean success = c.startConnection("localhost");
+                boolean success = c.startConnection();
                 System.out.println("Started connection? " + success);
                 if (success) {
                     success = c.requestFile("programa_teste.txt");

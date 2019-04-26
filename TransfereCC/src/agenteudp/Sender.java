@@ -35,7 +35,7 @@ public class Sender {
         try{
             DatagramPacket packet = new DatagramPacket(content,content.length,address,destPort);
             socket.send(packet);
-            System.out.println("Sent: \n"  + datagram.toString());
+            System.out.println("---- SENT ----\n"  + datagram.toString());
         } catch (IOException e1) {
             e1.printStackTrace();
         }
