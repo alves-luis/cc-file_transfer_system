@@ -20,7 +20,6 @@ import java.nio.file.Files;
 public class Server implements Runnable {
 
     public static int DEFAULT_TIMEOUT = 30000; // 3 seconds
-    public static int DEFAULT_TIMEOUT_TRIES = 5; // number of tries before timing out
 
     private static int DEFAULT_SENDING_PORT = 4444;
     private static int DEFAULT_RECEIVING_PORT = 7777;
@@ -30,6 +29,8 @@ public class Server implements Runnable {
 
     private Sender sender;
     private Receiver receiver;
+    /* For now it's a single Session, if multiplexing more sessions */
+    private Session session;
     private State state;
 
     public Server() {
@@ -37,6 +38,94 @@ public class Server implements Runnable {
         this.receiver = new Receiver(Server.DEFAULT_RECEIVING_PORT, null,state.getKeys());
         this.sender = new Sender(Server.DEFAULT_SENDING_PORT,DEFAULT_CLIENT_PORT, state.getKeys());
     }
+
+    /**
+     * Method that is called when waiting for a connection request
+     * @param ip ip of the calling request
+     * @return success of the operation
+     */
+    public boolean receiveConnectionRequest(String ip) {
+        // try to initiate a session
+        try {
+            this.session = new Session(ip, Server.DEFAULT_RECEIVING_PORT, state.getKeys());
+        }
+        catch (UnknownHostException e) {
+            System.err.println(e.toString());
+            return false;
+        }
+
+        int numberOfTries = Session.DEFAULT_NUMBER_OF_TRIES;
+        // while not enough invalid number of tries
+        while(numberOfTries > 0) {
+            ConnectionRequest r = receiver.getConnectionRequest();
+            // if connection == null, failed to retrieve one
+            if (r == null) {
+                numberOfTries--;
+            }
+            else {
+                session.receivedDatagram(r.getTimeStamp());
+                receiver.setExpectedIP(session.getClientIP());
+                boolean success = sendPublicKey();
+                if (success) {
+                    session.setConnected();
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Tries to send the public key of the server
+     * @return true if all went well
+     */
+    private boolean sendPublicKey() {
+        int numberOfTries = Session.DEFAULT_NUMBER_OF_TRIES;
+        boolean timedOut = false;
+
+        KeyExchange packetWithRSA = new KeyExchange(session.genNewSequenceNumber(), state.getRSAPublicKey());
+        while(numberOfTries > 0 && !timedOut) {
+            sender.sendDatagram(packetWithRSA,session.getClientIP());
+            KeyExchange pdu = receiver.getKeyExchange(session.getRetransmissionTimeout());
+            if (pdu == null) {
+                if (numberOfTries > 1)
+                    numberOfTries--;
+                else
+                    timedOut = true;
+            }
+            else {
+                session.receivedDatagram(pdu.getTimeStamp());
+                byte[] aesKey = state.decryptWithMyRSA(pdu.getKey());
+                session.setAESKey(aesKey);
+                // for now, state has the same key
+                state.setAESKey(aesKey);
+                this.receiver.activateAESKeyEncryption();
+                this.sender.activateAESKeyEncryption();
+                // this should change in case of multiplexing
+                boolean success = sendAck(pdu);
+                if (success)
+                    return true;
+                else {
+                    this.receiver.deactivateAESKeyEncryption();
+                    this.sender.deactivateAESKeyEncryption();
+                    return false;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * This method, given a PDU, tries to send an ACK of that PDU
+     * @param p pdu to ack
+     * @return success
+     */
+    private boolean sendAck(PDU p){
+        Ack ack = new Ack(session.genNewSequenceNumber(), p.getSeqNumber());
+        sender.sendDatagram(ack, session.getClientIP());
+        return true;
+    }
+
 
     /**
      * This method, given an instance of a File, sends its header
@@ -87,7 +176,7 @@ public class Server implements Runnable {
 
     /**
      * This method, given a packet, keeps sending it until
-     * it receives an ack or reponse, or gives up if timed out
+     * it receives an ack or response, or gives up if timed out
      * @param packet packet to send and wait for ack
      * @return true if packet sent and received an ack
      */
@@ -125,30 +214,6 @@ public class Server implements Runnable {
         }
         return false;
 
-    }
-
-    public boolean receiveConnectionRequest(String ip) {
-        int num_tries = 3;
-        while(num_tries > 0) {
-            PDU p = receiver.getFIFO();
-            try {
-                InetAddress address = InetAddress.getByName(ip);
-                if (p instanceof ConnectionRequest) {
-                    state.setStartingSeqNumber(p.getSeqNumber() + 1);
-                    state.setSenderIP(address.getHostAddress());
-                    receiver.setExpectedIP(state.getSenderIP());
-                    sendPacketWithResponse(new KeyExchange(state.genNewSeqNumber(),state.getRSAPublicKey()));
-                    state.receivedDatagram();
-                    return true;
-                }
-                else {
-                    num_tries--;
-                }
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-            }
-        }
-        return false;
     }
 
     /**
@@ -211,11 +276,6 @@ public class Server implements Runnable {
         this.state=null;
 
 
-    }
-
-    public void sendAck(PDU p){
-        Ack ack = new Ack(state.genNewSeqNumber(), p.getSeqNumber());
-        sender.sendDatagram(ack, state.getSenderIP());
     }
 
 

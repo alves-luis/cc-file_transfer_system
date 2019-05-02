@@ -44,4 +44,8 @@ public class Sender {
     public void activateAESKeyEncryption() {
         this.encrypted = true;
     }
+
+    public void deactivateAESKeyEncryption() {
+        this.encrypted = false;
+    }
 }

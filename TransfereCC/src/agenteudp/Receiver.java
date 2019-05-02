@@ -1,6 +1,7 @@
 package agenteudp;
 
 import agenteudp.control.Ack;
+import agenteudp.control.ConnectionRequest;
 import agenteudp.control.KeyExchange;
 import security.Keys;
 
@@ -8,6 +9,7 @@ import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -28,9 +30,6 @@ public class Receiver implements Runnable {
     private byte[] buffer;
     private ConcurrentHashMap<Long,Condition> seqToCondition;
     private ConcurrentHashMap<Long,PDU> seqToPdu;
-    // is used to map all the received datagrams to given IP
-    private ConcurrentHashMap<InetAddress,List<byte[]>> knownIpsToReceivedDatagrams;
-    private ConcurrentHashMap<InetAddress,List<PDU>> knownIpsToProcessedDatagrams;
     private boolean aesKeyEncryption; // if should use aesKeyDecryption;
     private Keys communicationKeys;
 
@@ -50,8 +49,6 @@ public class Receiver implements Runnable {
             this.datagramArrived = lock.newCondition();
             this.expectedIP = receiverIP;
             this.buffer = new byte[expectedSize];
-            this.knownIpsToReceivedDatagrams = new ConcurrentHashMap<>();
-            this.knownIpsToProcessedDatagrams = new ConcurrentHashMap<>();
             this.aesKeyEncryption = false;
             this.communicationKeys = k;
         }
@@ -210,7 +207,7 @@ public class Receiver implements Runnable {
                 timeoutInNanos = this.pduArrived.awaitNanos(timeoutInNanos);
             }
             if (this.pdus.size() > 0) {
-                PDU latest = this.pdus.remove(0);
+                PDU latest = this.pdus.get(0);
                 if (latest instanceof KeyExchange)
                     return (KeyExchange) latest;
             }
@@ -229,6 +226,28 @@ public class Receiver implements Runnable {
 
     public void deactivateAESKeyEncryption() {
         this.aesKeyEncryption = false;
+    }
+
+    /**
+     * Method that waits until a connection request has arrived
+     * @return Connection request or null if invalid pdu
+     */
+    public ConnectionRequest getConnectionRequest() {
+        try {
+            lock.lock();
+            while(this.pdus.isEmpty()) {
+                this.pduArrived.await();
+            }
+            PDU latest = this.pdus.remove(0);
+            if (latest instanceof ConnectionRequest)
+                return (ConnectionRequest) latest;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        finally {
+            lock.unlock();
+        }
+        return null;
     }
 
     /**

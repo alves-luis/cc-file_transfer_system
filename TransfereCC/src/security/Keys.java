@@ -28,6 +28,11 @@ public class Keys {
     private KeyPair pair;
     /* Agreed key for communication exchange */
     private SecretKey aesKey;
+
+    public Keys(KeyPair p) {
+        this.pair = p;
+        this.aesKey = null;
+    }
     
     /**
      * Default constructor. Uses 'RSA' and strongest instance of 
@@ -134,5 +139,10 @@ public class Keys {
             System.err.println(ex.toString());
         }
         return decryptedData;
+    }
+
+    public Keys clone() {
+        KeyPair p = new KeyPair(this.pair.getPublic(),this.pair.getPrivate());
+        return new Keys(p);
     }
 }

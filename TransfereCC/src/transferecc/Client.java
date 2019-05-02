@@ -73,10 +73,10 @@ public class Client implements Runnable {
                 state.receivedDatagram(response.getTimeStamp());
                 // so send my AES key
                 boolean success = sendAESKey(response);
-                if (success) // if all went well with sending AES key, it's connected
+                if (success) {// if all went well with sending AES key, it's connected
+                    state.setConnected();
                     return true;
-                else
-                    numberOfTries--;
+                }
             }
         }
         return false;
@@ -100,6 +100,7 @@ public class Client implements Runnable {
         }
         // else deactivate receiver encryption
         else {
+            sender.deactivateAESKeyEncryption();
             receiver.deactivateAESKeyEncryption();
         }
         return result;
