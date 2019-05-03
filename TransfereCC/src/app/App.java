@@ -33,8 +33,6 @@ public class App {
 
                 boolean serverSuccess = s.receiveConnectionRequest("localhost");
                 System.out.println("Connection set? " + serverSuccess);
-                boolean file = s.receiveFileRequest();
-                System.out.println( "Received file request? " + file);
                 boolean end = s.receiveConnectionTermination();
                 System.out.println("Ended connection? " + end);
             }

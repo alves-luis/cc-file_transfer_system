@@ -5,6 +5,9 @@ import agenteudp.PDUTypes;
 
 public abstract class PDUManagement extends PDU {
 
+    public static byte UPLOAD = 0;
+    public static byte DOWNLOAD = 1;
+
     private byte direction;
 
     public PDUManagement(long seqNumber, byte subtype, byte direction) {

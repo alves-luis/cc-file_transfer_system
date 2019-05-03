@@ -9,6 +9,9 @@ import java.util.Arrays;
 
 public class BlockData extends PDU {
 
+    /* Default value to be used when sending the header of file */
+    private static int DEFAULT_HEADER_DATA_SIZE = 512;
+
     private short sizeOfFileID;
     private String fileID;
     private int offset;
@@ -100,6 +103,20 @@ public class BlockData extends PDU {
         byte[] dados = Arrays.copyOfRange(data,currentOffset , data.length);
 
         return new BlockData(pdu, sizeOfFileID, fileID, offSet, dados);
+    }
+
+    /**
+     * Given the byte[] and an offset, returns the truncated byte[]
+     * if its length-offset is bigger than DEFAULT HEADER DATA SIZE
+     * @param data array to retrieve the chunk from
+     * @param offset index from which to retrieve the chunk
+     * @return returns the piece that should be sent
+     */
+    public static byte[] getDefaultChunkOfData(byte[] data, int offset) {
+        int sizeOfChunk = data.length-offset > DEFAULT_HEADER_DATA_SIZE ? DEFAULT_HEADER_DATA_SIZE : data.length - offset;
+        byte[] result = new byte[sizeOfChunk];
+        System.arraycopy(data,offset,result,0,sizeOfChunk);
+        return result;
     }
 
     

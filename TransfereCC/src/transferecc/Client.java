@@ -11,6 +11,7 @@ import agenteudp.control.KeyExchange;
 import agenteudp.data.BlockData;
 import agenteudp.data.FirstBlockData;
 import agenteudp.management.FileID;
+import agenteudp.management.PDUManagement;
 import security.Keys;
 
 import java.io.File;
@@ -136,23 +137,17 @@ public class Client implements Runnable {
         return false;
     }
 
-    public boolean endConnection() {
-        ConnectionTermination ending = new ConnectionTermination(state.genNewSequenceNumber());
-        boolean success = sendPacketWithAck(ending);
-        if (success) {
-            state.setDisconnected();
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
-
+    /**
+     * Method that is called when requesting a file from the server
+     * @param fileID
+     * @return
+     */
     public boolean requestFile(String fileID) {
-        int num_tries = 3;
+        int numberOfTries = ClientState.DEFAULT_NUMBER_OF_TRIES;
+        boolean timedOut = false;
         long timeout = state.getRetransmissionTimeout();
 
-        FileID requestFile = new FileID(state.genNewSequenceNumber(), PDUTypes.M_FILE, fileID);
+        FileID requestFile = new FileID(state.genNewSequenceNumber(), PDUManagement.DOWNLOAD, fileID);
         state.setTransferingFile();
         sender.sendDatagram(requestFile, state.getServerIP());
         while (num_tries > 0) {
@@ -170,6 +165,19 @@ public class Client implements Runnable {
         return false;
 
     }
+
+    public boolean endConnection() {
+        ConnectionTermination ending = new ConnectionTermination(state.genNewSequenceNumber());
+        boolean success = sendPacketWithAck(ending);
+        if (success) {
+            state.setDisconnected();
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
 
     public void receivedFirstBlock(PDU response){
         FirstBlockData firstBlock = (FirstBlockData) response;

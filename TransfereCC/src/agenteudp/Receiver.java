@@ -3,6 +3,7 @@ package agenteudp;
 import agenteudp.control.Ack;
 import agenteudp.control.ConnectionRequest;
 import agenteudp.control.KeyExchange;
+import agenteudp.management.FileID;
 import security.Keys;
 
 import java.io.IOException;
@@ -163,7 +164,7 @@ public class Receiver implements Runnable {
     }
 
     /**
-     * Given a sequence number, and a timeout, waits that timeout for a PDU
+     * Given a sequence number, and a timeout, waits that timeout for an Ack
      * @param seqNumber number that comes in the ack field of the PDU that should arrive
      * @param timeout number of milisseconds before timeout
      * @return ack or null, if timed out
@@ -176,7 +177,7 @@ public class Receiver implements Runnable {
             long timeLeft = timeout * 1000000; // in nano seconds
             Ack response = null;
             while(!this.seqToPdu.containsKey(seqNumber) && timeLeft > 0) {
-                timeLeft = this.pduArrived.awaitNanos(timeLeft);
+                timeLeft = c.awaitNanos(timeLeft);
             }
             // if did not timeout, update ack to the processed ack
             if (this.seqToPdu.containsKey(seqNumber)) {
@@ -207,9 +208,36 @@ public class Receiver implements Runnable {
                 timeoutInNanos = this.pduArrived.awaitNanos(timeoutInNanos);
             }
             if (this.pdus.size() > 0) {
-                PDU latest = this.pdus.get(0);
+                PDU latest = this.pdus.remove(0);
                 if (latest instanceof KeyExchange)
                     return (KeyExchange) latest;
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        finally {
+            lock.unlock();
+        }
+        return null;
+    }
+
+    /**
+     * Method that is used when is expecting a fileID packet
+     * returns either the fileID or null, if not a fileID or timed out
+     * @param timeout timeout value in ms
+     * @return pdu
+     */
+    public FileID getFileID(long timeout) {
+        try {
+            lock.lock();
+            long timeoutInNanos = timeout * 1000000;
+            while(this.pdus.isEmpty() && timeoutInNanos > 0) {
+                timeoutInNanos = this.pduArrived.awaitNanos(timeoutInNanos);
+            }
+            if (this.pdus.size() > 0) {
+                PDU latest = this.pdus.remove(0);
+                if (latest instanceof FileID)
+                    return (FileID) latest;
             }
         } catch (InterruptedException e) {
             e.printStackTrace();

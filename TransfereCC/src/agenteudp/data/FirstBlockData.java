@@ -11,6 +11,8 @@ import java.util.Arrays;
 public class FirstBlockData extends PDU {
 
     private static int SIZE_OF_HASH_ARRAY = 20;
+    /* Default value to be used when sending the header of file */
+    private static int DEFAULT_HEADER_DATA_SIZE = 512;
 
     private short sizeOfFileID;
     private String fileID;
@@ -139,16 +141,17 @@ public class FirstBlockData extends PDU {
         return sol;
     }
 
-    public static void main(String[] args) {
-        PDU p = new PDU(123, PDUTypes.DATA,PDUTypes.D_FIRST);
-        byte[] dados = new byte[23];
-        for(int i = 0; i < 23; i++)
-            dados[i] = 1;
-        byte[] hash = getHash(dados);
-        FirstBlockData pdu = new FirstBlockData(p,(short) "program_text".length(),"program_text",23,hash,dados);
-        System.out.println(pdu.toString());
-        byte[] degenerate = pdu.generatePDU();
-        System.out.println(FirstBlockData.degeneratePDU(degenerate).toString());
+    /**
+     * Given the file as byte[], returns the data sent on the
+     * first block
+     * @param data first chunk of file
+     * @return returns the piece that should be sent along with the header
+     */
+    public static byte[] getFirstChunkOfData(byte[] data) {
+        int sizeOfChunk = data.length > DEFAULT_HEADER_DATA_SIZE ? DEFAULT_HEADER_DATA_SIZE : data.length;
+        byte[] result = new byte[sizeOfChunk];
+        System.arraycopy(data,0,result,0,sizeOfChunk);
+        return result;
     }
 
     public String toString() {

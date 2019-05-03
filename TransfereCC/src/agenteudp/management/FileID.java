@@ -3,15 +3,10 @@ package agenteudp.management;
 import agenteudp.PDU;
 import agenteudp.PDUTypes;
 
-import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
 public class FileID extends PDUManagement {
 
-    public static byte LISTING = 0;
-    public static byte FILE = 1;
 
     private String fileID;
 
