@@ -99,6 +99,7 @@ public class Receiver implements Runnable {
 
     public synchronized void stopRunning() {
         this.running = false;
+        this.socket.close();
     }
 
     public void setExpectedIP(InetAddress ip) {
