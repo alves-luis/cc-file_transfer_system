@@ -21,13 +21,14 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 
-public class Client implements Runnable {
+public class Client {
 
 
     private Sender sender;
     private Receiver receiver;
     private ClientState state;
     private Keys cryptoKeys;
+    private Thread receivingThread;
 
     /**
      * Default constructor for Client
@@ -39,7 +40,10 @@ public class Client implements Runnable {
             this.state = new ClientState(InetAddress.getByName(serverIP),destPort);
             this.cryptoKeys = new Keys();
             this.receiver = new Receiver(Receiver.DEFAULT_PORT, InetAddress.getByName(serverIP), cryptoKeys);
+            this.receiver.setTimeout(10000); // set default receiving timeout
             this.sender = new Sender(Sender.DEFAULT_PORT, destPort, cryptoKeys);
+            this.receivingThread = new Thread(receiver);
+            this.receivingThread.start();
         }
         catch (UnknownHostException e) {
             e.printStackTrace();
@@ -140,99 +144,84 @@ public class Client implements Runnable {
     /**
      * Method that is called when requesting a file from the server
      * @param fileID
-     * @return
+     * @return success of the operation
      */
     public boolean requestFile(String fileID) {
         int numberOfTries = ClientState.DEFAULT_NUMBER_OF_TRIES;
         boolean timedOut = false;
-        long timeout = state.getRetransmissionTimeout();
 
         FileID requestFile = new FileID(state.genNewSequenceNumber(), PDUManagement.DOWNLOAD, fileID);
         state.setTransferingFile();
-        sender.sendDatagram(requestFile, state.getServerIP());
-        while (num_tries > 0) {
-            PDU response = receiver.getFIFO(timeout);
-            if (response == null) { // timed out
-                num_tries--;
-                continue;
+        while(numberOfTries > 0 && !timedOut) {
+            sender.sendDatagram(requestFile,state.getServerIP());
+            FirstBlockData pdu = receiver.getFirstBlockData(state.getRetransmissionTimeout());
+            // if did not get a valid header
+            if (pdu == null) {
+                if (numberOfTries > 1)
+                    numberOfTries--;
+                else
+                    timedOut = true;
             }
-            state.receivedDatagram(response.getTimeStamp());
-            if (response instanceof FirstBlockData) {
-                receivedFirstBlock(response);
-                return true;
+            // got the header, so wait for the rest of the file
+            else {
+                state.receivedFirstBlockOfFile(pdu);
+                state.receivedDatagram(pdu.getTimeStamp());
+                // it's only sending a single Ack. Might be bad.
+                sender.sendDatagram(new Ack(state.genNewSequenceNumber(),pdu.getSeqNumber()),state.getServerIP());
+                return waitForFile();
             }
         }
         return false;
-
     }
 
-    public boolean endConnection() {
-        ConnectionTermination ending = new ConnectionTermination(state.genNewSequenceNumber());
-        boolean success = sendPacketWithAck(ending);
-        if (success) {
-            state.setDisconnected();
+    public boolean sendFile(String filename) {
+        // TO DO
+        return false;
+    }
+
+    /**
+     * Method that is called after receiving the header of a file. Waits for the rest of the pieces and sends acks
+     * @return success of the waiting operation
+     */
+    private boolean waitForFile() {
+        boolean timedOut = false;
+        int numberOfTries = ClientState.DEFAULT_NUMBER_OF_TRIES;
+        // if missing pieces
+        while (state.missingFilePieces() && !timedOut) {
+            BlockData data = receiver.getBlockData(state.getRetransmissionTimeout());
+            // if failed to retrieve a block
+            if (data == null) {
+                if (numberOfTries > 1)
+                    numberOfTries--;
+                else
+                    timedOut = true;
+            }
+            // got a block, so update the file pieces
+            else {
+                state.receivedDatagram(data.getTimeStamp());
+                state.receivedBlockOfFile(data);
+                // got a successful block, so update the number of tries to get a block
+                numberOfTries = ClientState.DEFAULT_NUMBER_OF_TRIES;
+                // send an ack
+                Ack ack = new Ack(state.genNewSequenceNumber(),data.getSeqNumber());
+                sender.sendDatagram(ack,state.getServerIP());
+            }
+        }
+        if (!timedOut) {
+            createFile();
             return true;
         }
-        else {
+        else
             return false;
-        }
     }
 
-
-    public void receivedFirstBlock(PDU response){
-        FirstBlockData firstBlock = (FirstBlockData) response;
-        state.receivedFirstBlockOfFile(firstBlock);
-        sendAck(firstBlock);
-        if (state.missingFilePieces()){
-            createFile();
-        }
-        else {
-            receiveBlocksLeft();
-        }
-    }
-
-
-    public void receiveBlocksLeft(){
-        long received=state.getLengthOfFileReceived();
-        int num_tries = 3;
-        long timeout = state.getRetransmissionTimeout();
-
-        while(received!=this.state.getFileSize()){
-
-            PDU response = receiver.getFIFO(timeout);
-            if (response == null) { // timed out
-                num_tries--;
-                continue;
-            }
-
-            state.receivedDatagram(response.getTimeStamp());
-
-            if (response instanceof BlockData) {
-               received+= receivedBlock(response);
-            }
-        }
-        createFile();
-    }
-
-
-
-    public int receivedBlock(PDU response){
-
-        BlockData block = (BlockData) response;
-        int sizeOfBlock = state.receivedBlockOfFile(block);
-        sendAck(block);
-        return sizeOfBlock;
-    }
-
-    public void sendAck(PDU block){
-        Ack ack = new Ack(state.genNewSequenceNumber(), block.getSeqNumber());
-        sender.sendDatagram(ack, state.getServerIP());
-    }
-
+    /**
+     * Method that is used to instantiate the file
+     */
     private void createFile() {
         try{
             byte[] result = state.concatenateFile();
-            File file= new File ("C_"+state.getFileID());
+            File file = new File ("C_"+state.getFileID());
             FileOutputStream out= new FileOutputStream(file);
             out.write(result);
             out.flush();
@@ -249,9 +238,20 @@ public class Client implements Runnable {
         }
     }
 
-
-    @Override
-    public void run() {
-        new Thread(receiver).start();
+    /**
+     * Method that is used to end a connection to the server
+     * @return success of the operation
+     */
+    public boolean endConnection() {
+        ConnectionTermination ending = new ConnectionTermination(state.genNewSequenceNumber());
+        boolean success = sendPacketWithAck(ending);
+        if (success) {
+            state.setDisconnected();
+            receiver.stopRunning();
+            return true;
+        }
+        else {
+            return false;
+        }
     }
 }

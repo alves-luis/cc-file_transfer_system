@@ -2,7 +2,10 @@ package agenteudp;
 
 import agenteudp.control.Ack;
 import agenteudp.control.ConnectionRequest;
+import agenteudp.control.ConnectionTermination;
 import agenteudp.control.KeyExchange;
+import agenteudp.data.BlockData;
+import agenteudp.data.FirstBlockData;
 import agenteudp.management.FileID;
 import security.Keys;
 
@@ -20,19 +23,18 @@ public class Receiver implements Runnable {
     public static int DEFAULT_PORT = 5555;
 
     private DatagramSocket socket;
-    private int expectedSize; // this will increment according to flow
-    private ArrayList<byte[]> datagrams;
+    private ArrayList<DatagramPacket> datagrams;
     private ArrayList<PDU> pdus;
     private ReentrantLock lock;
     private Condition pduArrived;
     private Condition datagramArrived;
     private InetAddress expectedIP;
     private boolean running;
-    private byte[] buffer;
     private ConcurrentHashMap<Long,Condition> seqToCondition;
     private ConcurrentHashMap<Long,PDU> seqToPdu;
     private boolean aesKeyEncryption; // if should use aesKeyDecryption;
     private Keys communicationKeys;
+    private InetAddress senderIP; // used when receiving a connection request
 
 
     public Receiver(int defaultPort, InetAddress receiverIP, Keys k) {
@@ -42,16 +44,15 @@ public class Receiver implements Runnable {
             this.seqToPdu = new ConcurrentHashMap<>();
             /* */
             this.socket = new DatagramSocket(defaultPort);
-            this.expectedSize = 2048;
             this.pdus = new ArrayList<>();
             this.datagrams = new ArrayList<>();
             this.lock = new ReentrantLock();
             this.pduArrived = lock.newCondition();
             this.datagramArrived = lock.newCondition();
             this.expectedIP = receiverIP;
-            this.buffer = new byte[expectedSize];
             this.aesKeyEncryption = false;
             this.communicationKeys = k;
+            this.senderIP = null;
         }
         catch (SocketException e) {
             e.printStackTrace();
@@ -62,11 +63,10 @@ public class Receiver implements Runnable {
      * Method that blocks until a datagram is received. Returns the content of that datagram
      * @return
      */
-    public byte[] receiveDatagram() {
-        byte[] data = null;
+    public DatagramPacket receiveDatagram() {
         boolean valid = false;
         try {
-            DatagramPacket packet = new DatagramPacket(this.buffer, this.expectedSize);
+            DatagramPacket packet = new DatagramPacket(new byte[1500] ,1500);
 
             while(!valid) {
                 socket.receive(packet);
@@ -74,63 +74,24 @@ public class Receiver implements Runnable {
                 if (this.expectedIP == null || receiverIP.equals(this.expectedIP))
                     valid = true;
             }
-
-            int length = packet.getLength();
-            int offset = packet.getOffset();
-            data = new byte[length];
-            System.arraycopy(packet.getData(),offset,data,0,length);
-        }
-        catch(UnknownHostException e){
-            System.err.println("Opah, não sei que se passou");
+            return packet;
         } catch (IOException e) {
-            System.err.println("Exceção a enviar o pacote!");
         }
-        return data;
+        return null;
     }
 
     /**
-     * Method that blocks until a PDU is received, then returns that PDU
-     * @param timeout the timeout of the condition to wait
-     * @return null if timed out
+     * Sets the timeout of this socket
+     * @param timeout in ms
      */
-    public PDU getFIFO(long timeout) {
+    public void setTimeout(int timeout) {
         try {
-            lock.lock();
-            long timeLeft = timeout * 1000000;
-            while(this.pdus.isEmpty() || timeLeft > 0) {
-                timeLeft = this.pduArrived.awaitNanos(timeLeft);
-            }
-            if (this.pdus.size() > 0)
-                return this.pdus.remove(0);
-            else
-                return null;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            this.socket.setSoTimeout(timeout);
+        } catch (SocketException e) {
+            System.err.println(e.toString());
         }
-        finally {
-            lock.unlock();
-        }
-        return null;
     }
 
-    public PDU getFIFO() {
-        try {
-            lock.lock();
-            while(this.pdus.isEmpty()) {
-                this.pduArrived.await();
-            }
-            if (this.pdus.size() > 0)
-                return this.pdus.remove(0);
-            else
-                return null;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        finally {
-            lock.unlock();
-        }
-        return null;
-    }
 
     private synchronized boolean running() {
         return this.running;
@@ -151,7 +112,7 @@ public class Receiver implements Runnable {
         new Thread(p).start();
         this.running = true;
         while(running) {
-            byte[] datagram = this.receiveDatagram();
+            DatagramPacket datagram = this.receiveDatagram();
             try {
                 lock.lock();
                 this.datagrams.add(datagram);
@@ -161,6 +122,7 @@ public class Receiver implements Runnable {
                 lock.unlock();
             }
         }
+        System.out.println("Socket is disconnected!");
     }
 
     /**
@@ -279,6 +241,91 @@ public class Receiver implements Runnable {
     }
 
     /**
+     * Method that is used when is expecting a FirstBlockData packet
+     * returns either the FirstBlockData or null, if not a FirstBlockData or timed out
+     * @param timeout timeout value in ms
+     * @return pdu
+     */
+    public FirstBlockData getFirstBlockData(long timeout) {
+        try {
+            lock.lock();
+            long timeoutInNanos = timeout * 1000000;
+            while(this.pdus.isEmpty() && timeoutInNanos > 0) {
+                timeoutInNanos = this.pduArrived.awaitNanos(timeoutInNanos);
+            }
+            if (this.pdus.size() > 0) {
+                PDU latest = this.pdus.remove(0);
+                if (latest instanceof FirstBlockData)
+                    return (FirstBlockData) latest;
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        finally {
+            lock.unlock();
+        }
+        return null;
+    }
+
+    /**
+     * Method that is used when is expecting a BlockData packet
+     * returns either the BlockData or null, if not a BlockData or timed out
+     * @param timeout timeout value in ms
+     * @return pdu
+     */
+    public BlockData getBlockData(long timeout) {
+        try {
+            lock.lock();
+            long timeoutInNanos = timeout * 1000000;
+            while(this.pdus.isEmpty() && timeoutInNanos > 0) {
+                timeoutInNanos = this.pduArrived.awaitNanos(timeoutInNanos);
+            }
+            if (this.pdus.size() > 0) {
+                PDU latest = this.pdus.remove(0);
+                if (latest instanceof BlockData)
+                    return (BlockData) latest;
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        finally {
+            lock.unlock();
+        }
+        return null;
+    }
+
+    public InetAddress getSenderIP() {
+        return this.senderIP;
+    }
+
+    /**
+     * Method that is used when is expecting a ConnectionTermination packet
+     * returns either the ConnectionTermination or null, if not a ConnectionTermination or timed out
+     * @param retransmissionTimeout timeout value in ms
+     * @return pdu
+     */
+    public ConnectionTermination getConnectionTermination(long retransmissionTimeout) {
+        try {
+            lock.lock();
+            long timeoutInNanos = retransmissionTimeout * 1000000;
+            while(this.pdus.isEmpty() && timeoutInNanos > 0) {
+                timeoutInNanos = this.pduArrived.awaitNanos(timeoutInNanos);
+            }
+            if (this.pdus.size() > 0) {
+                PDU latest = this.pdus.remove(0);
+                if (latest instanceof ConnectionTermination)
+                    return (ConnectionTermination) latest;
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        finally {
+            lock.unlock();
+        }
+        return null;
+    }
+
+    /**
      * Processes received datagrams
      */
     private class Processor implements Runnable {
@@ -297,12 +344,27 @@ public class Receiver implements Runnable {
                     while(r.datagrams.isEmpty())
                         r.datagramArrived.await();
 
-                    byte[] datagram = r.datagrams.get(0);
-                    if (aesKeyEncryption)
-                        datagram = communicationKeys.decryptAES(datagram);
+                    DatagramPacket packet = r.datagrams.get(0);
+                    if (packet == null)
+                        continue;
 
-                    PDU p = DatagramParser.processDatagram(datagram);
+                    // truncate packet
+                    int length = packet.getLength();
+                    int offset = packet.getOffset();
+                    byte[] data = new byte[length];
+                    System.arraycopy(packet.getData(),offset,data,0,length);
+
+                    if (aesKeyEncryption)
+                        data = communicationKeys.decryptAES(data);
+
+                    PDU p = DatagramParser.processDatagram(data);
                     System.out.println("---- PROCESSED ----\n"  + p.toString());
+
+                    // if it's a connection request, update the IP field
+                    if (p instanceof ConnectionRequest)
+                        r.senderIP = packet.getAddress();
+
+
                     r.datagrams.remove(0);
                     r.pdus.add(p);
                     r.pduArrived.signalAll();
@@ -315,6 +377,7 @@ public class Receiver implements Runnable {
                             c.signal();
                     }
                 } catch (InterruptedException | InvalidTypeOfDatagram | InvalidCRCException e) {
+                    r.datagrams.remove(0);
                     e.printStackTrace();
                 } finally {
                     lock.unlock();

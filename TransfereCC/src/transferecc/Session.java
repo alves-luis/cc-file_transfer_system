@@ -13,7 +13,7 @@ import java.util.Random;
 public class Session {
 
     /* Default size of piece */
-    public static int DEFAULT_SIZE_PIECE;
+    public static int DEFAULT_SIZE_PIECE = 512;
 
     /* Default number of tries for sendind a packet */
     public static int DEFAULT_NUMBER_OF_TRIES = 5;
@@ -187,14 +187,15 @@ public class Session {
         this.fileID = pdu.getFileId();
         this.sizeOfFile = pdu.getFileSize();
         this.hashOfFile = pdu.getHash();
+        this.piecesOfFile.put(0,pdu.getData());
     }
 
     /**
      * Returns the size of the file that should be sent
      * @return sizeof array of bytes to send
      */
-    public int getSizeOfPiece() {
-        return this.sizeOfPiece;
+    public int getSizeOfPiece(int offset) {
+        return this.sizeOfFile - offset < this.sizeOfPiece ? this.sizeOfFile - offset : this.sizeOfPiece;
     }
 
     /**

@@ -9,51 +9,45 @@ import java.util.Scanner;
 public class App {
     public static void main(String[] args) {
         if (args.length < 1)
-            System.out.println(Menu.insuficientArguments(args.length));
+            System.out.println("Insuficient arguments!");
         else {
             if (args[0].equals("client")) {
-                Client c = new Client("localhost",7777);
-                new Thread(c).start();
-
-                boolean success = c.startConnection();
-                System.out.println("Started connection? " + success);
-                if (success) {
-                    success = c.requestFile("programa_teste.txt");
-                    System.out.println("File requested? " + success);
+                if (args.length < 4) {
+                    System.out.println(Menu.insuficientArguments(args.length));
                 }
-                if (success) {
-                    success = c.endConnection();
-                    System.out.println("Ended connection? " + success);
+                else {
+                    Client c = new Client(args[3], 7777);
+
+                    boolean success = c.startConnection();
+                    System.out.println("Started connection? " + success);
+                    if (success) {
+                        if (args[1].equals("GET")) {
+                            success = c.requestFile(args[2]);
+                            System.out.println("File requested? " + success);
+                        }
+                        else if (args[1].equals("PUT")) {
+                            success = c.sendFile(args[2]);
+                            System.out.println("File uploaded? " + success);
+                        }
+                    }
+                    if (success) {
+                        success = c.endConnection();
+                        System.out.println("Ended connection? " + success);
+                    }
                 }
 
             }
             if (args[0].equals("server")) {
                 Server s = new Server();
                 new Thread(s).start();
-
-                boolean serverSuccess = s.receiveConnectionRequest("localhost");
-                System.out.println("Connection set? " + serverSuccess);
-                boolean end = s.receiveConnectionTermination();
-                System.out.println("Ended connection? " + end);
+                boolean serverSuccess = true;
+                while(serverSuccess) {
+                    serverSuccess = s.receiveConnectionRequest();
+                    System.out.println("Transfer with success? " + serverSuccess);
+                }
             }
 
         }
-    }
-
-    private static void chooseDestinationIP(Configuration config) {
-        System.out.println(Menu.welcomeMenu(config.getIPS()));
-        int numIps = config.numIps();
-        int chosen = getInt(0,numIps+1);
-        if (chosen == 0)
-            addNewIP(config);
-        else {
-            config.getIP(chosen-1);
-        }
-
-    }
-
-    private static void addNewIP(Configuration config) {
-
     }
 
     private static String getString(){
@@ -89,24 +83,5 @@ public class App {
                 numTries--;
             }
         return result;
-    }
-
-
-    public void nextAction(int acao, Configuration config){
-        int nIps= config.numIps();
-        Scanner in = new Scanner(System.in);
-        int res=in.nextInt();
-        if(res>0 && res<nIps){
-            //começar ligação com endereço escolhido
-        }
-        else{
-            switch(res){
-                case 0:
-
-
-
-            }
-        }
-
     }
 }

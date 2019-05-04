@@ -21,7 +21,7 @@ public class Menu {
     public static String insuficientArguments(int length) {
         StringBuilder sb = new StringBuilder();
         sb.append("Insuficient number of arguments! (").append(length); 
-        sb.append(")\nPlease run the program like this: java Client <IPsFile>");
+        sb.append(")\nPlease run the program like this: java Client <PUT/GET> <filename> <serverIP>");
         return sb.toString();
     }
     

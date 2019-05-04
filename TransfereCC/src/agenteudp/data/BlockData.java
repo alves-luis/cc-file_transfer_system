@@ -97,7 +97,7 @@ public class BlockData extends PDU {
         currentOffset += sizeOfFileID;
         String fileID = new String(encodedFileID, Charset.forName("UTF-8"));
 
-        int offSet = ByteBuffer.wrap(data,currentOffset, currentOffset + 4).getInt();
+        int offSet = ByteBuffer.wrap(data,currentOffset, 4).getInt();
         currentOffset += 4;
         
         byte[] dados = Arrays.copyOfRange(data,currentOffset , data.length);
@@ -105,18 +105,11 @@ public class BlockData extends PDU {
         return new BlockData(pdu, sizeOfFileID, fileID, offSet, dados);
     }
 
-    /**
-     * Given the byte[] and an offset, returns the truncated byte[]
-     * if its length-offset is bigger than DEFAULT HEADER DATA SIZE
-     * @param data array to retrieve the chunk from
-     * @param offset index from which to retrieve the chunk
-     * @return returns the piece that should be sent
-     */
-    public static byte[] getDefaultChunkOfData(byte[] data, int offset) {
-        int sizeOfChunk = data.length-offset > DEFAULT_HEADER_DATA_SIZE ? DEFAULT_HEADER_DATA_SIZE : data.length - offset;
-        byte[] result = new byte[sizeOfChunk];
-        System.arraycopy(data,offset,result,0,sizeOfChunk);
-        return result;
+    public String toString() {
+        String s = super.toString();
+        StringBuilder sb = new StringBuilder();
+        sb.append(s).append("FileID: ").append(this.fileID).append("\nOffset: ").append(this.offset).append("\n");
+        return sb.toString();
     }
 
     
