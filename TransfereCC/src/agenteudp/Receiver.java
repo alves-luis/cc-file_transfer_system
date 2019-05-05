@@ -66,7 +66,7 @@ public class Receiver implements Runnable {
     public DatagramPacket receiveDatagram() {
         boolean valid = false;
         try {
-            DatagramPacket packet = new DatagramPacket(new byte[1500] ,1500);
+            DatagramPacket packet = new DatagramPacket(new byte[64480] ,64480);
 
             while(!valid) {
                 socket.receive(packet);
@@ -145,6 +145,7 @@ public class Receiver implements Runnable {
             // if did not timeout, update ack to the processed ack
             if (this.seqToPdu.containsKey(seqNumber)) {
                 response = (Ack) this.seqToPdu.remove(seqNumber);
+                this.pdus.remove(0);
             }
 
             return response;
@@ -346,8 +347,9 @@ public class Receiver implements Runnable {
                         r.datagramArrived.await();
 
                     DatagramPacket packet = r.datagrams.get(0);
-                    if (packet == null)
+                    if (packet == null) {
                         continue;
+                    }
 
                     // truncate packet
                     int length = packet.getLength();

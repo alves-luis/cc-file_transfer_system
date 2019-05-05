@@ -214,7 +214,8 @@ public class Session {
     }
 
     public void increaseSizeOfPiece() {
-
+        this.sizeOfPiece *= 2;
+        this.sizeOfPiece = this.sizeOfPiece > 64480 ? 64480 : this.sizeOfPiece;
     }
 
 
