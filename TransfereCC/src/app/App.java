@@ -3,6 +3,7 @@ package app;
 import transferecc.Client;
 import transferecc.Server;
 
+import java.time.Instant;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
@@ -16,6 +17,7 @@ public class App {
                     System.out.println(Menu.insuficientArguments(args.length));
                 }
                 else {
+                    long start = System.nanoTime();
                     Client c = new Client(args[3], 7777);
 
                     boolean success = c.startConnection();
@@ -31,8 +33,10 @@ public class App {
                         }
                     }
                     if (success) {
+                        long end = System.nanoTime();
                         success = c.endConnection();
                         System.out.println("Ended connection? " + success);
+                        System.out.println("Finished download in " + ((end - start) / 1000000) + "ms");
                     }
                 }
 

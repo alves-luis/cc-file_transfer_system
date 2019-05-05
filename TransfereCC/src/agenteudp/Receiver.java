@@ -357,11 +357,12 @@ public class Receiver implements Runnable {
                     byte[] data = new byte[length];
                     System.arraycopy(packet.getData(),offset,data,0,length);
 
-                    if (aesKeyEncryption)
+                    if (aesKeyEncryption) {
                         data = communicationKeys.decryptAES(data);
+                    }
 
                     PDU p = DatagramParser.processDatagram(data);
-                    System.out.println("---- PROCESSED ----\n"  + p.toString());
+                    //System.out.println("---- PROCESSED ----\n"  + p.toString());
 
                     // if it's a connection request, update the IP field
                     if (p instanceof ConnectionRequest)
@@ -381,7 +382,7 @@ public class Receiver implements Runnable {
                     }
                 } catch (InterruptedException | InvalidTypeOfDatagram | InvalidCRCException e) {
                     r.datagrams.remove(0);
-                    e.printStackTrace();
+                    System.err.println(e.toString());
                 } finally {
                     lock.unlock();
                 }

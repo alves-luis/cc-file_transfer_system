@@ -108,7 +108,9 @@ public class BlockData extends PDU {
     public String toString() {
         String s = super.toString();
         StringBuilder sb = new StringBuilder();
-        sb.append(s).append("FileID: ").append(this.fileID).append("\nOffset: ").append(this.offset).append("\n");
+        sb.append(s).append("FileID: ")
+                .append(this.fileID).append("\nOffset: ")
+                .append(this.offset).append("\nLength: ").append(this.data.length).append("\n");
         return sb.toString();
     }
 

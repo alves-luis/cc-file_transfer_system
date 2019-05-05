@@ -89,8 +89,9 @@ public class DatagramParser {
     }
 
     private static byte[] getChecksum(byte[] data) {
-        byte[] checksum = Arrays.copyOfRange(data,0,8);
-        return checksum;
+        if (data != null && data.length > 7)
+            return Arrays.copyOfRange(data,0,8);
+        return null;
     }
 
     /**
@@ -101,6 +102,9 @@ public class DatagramParser {
      * @return true if they match
      */
     private static boolean verifyIntegrity(byte[] data, byte[] checksumValue) {
+        if (checksumValue == null)
+            return false;
+
         CRC32 crc = new CRC32();
         crc.update(data,8,data.length-8);
         long sum = crc.getValue();

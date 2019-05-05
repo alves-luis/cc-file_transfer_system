@@ -115,7 +115,7 @@ public class Session {
         else if (retransmission_timeout > 60000) {
             retransmission_timeout = 60000;
         }
-        System.out.println("RTTVAR: " + round_trip_time_variation + ". SRTT: " + smoothed_round_trip_time + ". RTO: " + retransmission_timeout);
+        //System.out.println("RTTVAR: " + round_trip_time_variation + ". SRTT: " + smoothed_round_trip_time + ". RTO: " + retransmission_timeout);
     }
 
 
@@ -215,7 +215,7 @@ public class Session {
 
     public void increaseSizeOfPiece() {
         this.sizeOfPiece *= 2;
-        this.sizeOfPiece = this.sizeOfPiece > 64480 ? 64480 : this.sizeOfPiece;
+        this.sizeOfPiece = this.sizeOfPiece > 32000 ? 32000 : this.sizeOfPiece;
     }
 
 
