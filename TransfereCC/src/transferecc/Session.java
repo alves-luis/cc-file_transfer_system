@@ -167,8 +167,7 @@ public class Session {
      * @return lenght of the sum of the pieces of file
      */
     private int lenghtOfPieces() {
-        return this.piecesOfFile.values().stream()
-                .mapToInt(ar -> ar.length).sum();
+        return this.piecesOfFile.values().stream().mapToInt(ar -> ar.length).sum();
     }
 
     /**
@@ -204,6 +203,18 @@ public class Session {
      */
     public int getSizeOfFile() {
         return this.sizeOfFile;
+    }
+
+    /**
+     * Reduce the size of the piece by 2, with mininum 512 bytes
+     */
+    public void reduceSizeOfPiece() {
+        this.sizeOfPiece /= 2;
+        this.sizeOfPiece = this.sizeOfPiece < DEFAULT_SIZE_PIECE ? DEFAULT_SIZE_PIECE : this.sizeOfPiece;
+    }
+
+    public void increaseSizeOfPiece() {
+
     }
 
 

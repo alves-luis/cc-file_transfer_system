@@ -201,6 +201,18 @@ public class Server implements Runnable {
                             t.join(session.getRetransmissionTimeout()); // wait for the pieces
                             if (!t.sentReliably())
                                 return false;
+                            // sent reliably
+                            else {
+                                int attempts = t.getNumberOfAttempts();
+                                // if took more than one attempt, dial back size of piece
+                                if (attempts > 0) {
+                                    session.reduceSizeOfPiece();
+                                }
+                                // else increase it (like a man)
+                                else {
+                                    session.increaseSizeOfPiece();
+                                }
+                            }
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                             return false;

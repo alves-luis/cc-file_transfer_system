@@ -15,6 +15,7 @@ public class ReliablePiece extends Thread {
     private InetAddress destinationIP;
     private long retransmissionTimeout;
     private boolean success;
+    private int numberOfAttempts;
 
     public ReliablePiece(InetAddress destinationIP, long rto, Receiver r, Sender s, BlockData block) {
         this.receiver = r;
@@ -23,6 +24,7 @@ public class ReliablePiece extends Thread {
         this.destinationIP = destinationIP;
         this.retransmissionTimeout = rto;
         this.success = false;
+        this.numberOfAttempts = 0;
     }
 
     @Override
@@ -35,6 +37,7 @@ public class ReliablePiece extends Thread {
             Ack response = receiver.getAck(this.data.getSeqNumber(),this.retransmissionTimeout);
             // if failed to get ack, retransmit
             if (response == null) {
+                this.numberOfAttempts++;
                 if (numberOfTries > 1)
                     numberOfTries--;
                 else
@@ -47,7 +50,18 @@ public class ReliablePiece extends Thread {
         }
     }
 
+    /**
+     * Did it run with success?
+     * @return success
+     */
     public boolean sentReliably() {
         return this.success;
+    }
+
+    /**
+     * @return number of attempts to send the datagram
+     */
+    public int getNumberOfAttempts() {
+        return this.numberOfAttempts;
     }
 }

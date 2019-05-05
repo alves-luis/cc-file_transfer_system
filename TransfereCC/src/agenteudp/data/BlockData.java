@@ -9,8 +9,8 @@ import java.util.Arrays;
 
 public class BlockData extends PDU {
 
-    /* Default value to be used when sending the header of file */
-    private static int DEFAULT_HEADER_DATA_SIZE = 512;
+    /* Default value to be used when sending the file */
+    private static int DEFAULT_DATA_SIZE = 512;
 
     private short sizeOfFileID;
     private String fileID;
