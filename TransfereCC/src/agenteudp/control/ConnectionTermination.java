@@ -11,14 +11,12 @@ public class ConnectionTermination extends PDUControl {
         super(seqNumber, PDUTypes.C_CONNECTION_TERMINATION);
     }
 
-    public static ConnectionTermination degeneratePDU(byte[] data) {
-        PDU pdu = PDU.degeneratePDU(data);
+    public ConnectionTermination(PDU p) {
+        super(p, PDUTypes.C_CONNECTION_TERMINATION);
+    }
 
-        ConnectionTermination packet = new ConnectionTermination(pdu.getSeqNumber());
-        packet.setTimeStamp(pdu.getTimeStamp());
-        packet.setChecksum(pdu.getChecksum());
-        packet.setSeqNumber(pdu.getSeqNumber());
-        return packet;
+    public static ConnectionTermination degeneratePDU(byte[] data) {
+        return new ConnectionTermination(PDU.degeneratePDU(data));
     }
 
 }

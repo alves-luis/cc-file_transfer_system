@@ -15,7 +15,7 @@ public class ConnectionRequest extends PDUControl {
     }
 
     public ConnectionRequest(PDU p) {
-        super(p, PDUTypes.C_AUTHENTICATION_REQUEST);
+        super(p, PDUTypes.C_CONNECTION_REQUEST);
     }
 
     public static ConnectionRequest degeneratePDU(byte[] data) {

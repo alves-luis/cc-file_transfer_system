@@ -187,7 +187,7 @@ public class Server implements Runnable {
 
 
                         BlockData block = new BlockData(session.genNewSequenceNumber(), fileID, offset, data);
-                        ReliablePiece t = new ReliablePiece(session.getClientIP(), session.getRetransmissionTimeout(), this.receiver, this.sender, block);
+                        ReliablePiece t = new ReliablePiece(session, this.receiver, this.sender, block);
                         t.start();
                         sendingThreads.add(t);
                         offset += data.length; // update offset

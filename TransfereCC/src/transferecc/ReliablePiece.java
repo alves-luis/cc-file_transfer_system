@@ -12,19 +12,17 @@ public class ReliablePiece extends Thread {
     private BlockData data;
     private Sender sender;
     private Receiver receiver;
-    private InetAddress destinationIP;
-    private long retransmissionTimeout;
     private boolean success;
     private int numberOfAttempts;
+    private Session session;
 
-    public ReliablePiece(InetAddress destinationIP, long rto, Receiver r, Sender s, BlockData block) {
+    public ReliablePiece(Session ses, Receiver r, Sender s, BlockData block) {
         this.receiver = r;
         this.sender = s;
         this.data = block;
-        this.destinationIP = destinationIP;
-        this.retransmissionTimeout = rto;
         this.success = false;
         this.numberOfAttempts = 0;
+        this.session = ses;
     }
 
     @Override
@@ -33,8 +31,8 @@ public class ReliablePiece extends Thread {
         boolean timedOut = false;
 
         while(numberOfTries > 0 && !timedOut) {
-            sender.sendDatagram(this.data,this.destinationIP);
-            Ack response = receiver.getAck(this.data.getSeqNumber(),this.retransmissionTimeout);
+            sender.sendDatagram(this.data,session.getClientIP());
+            Ack response = receiver.getAck(this.data.getSeqNumber(),session.getRetransmissionTimeout());
             // if failed to get ack, retransmit
             if (response == null) {
                 this.numberOfAttempts++;
@@ -44,6 +42,7 @@ public class ReliablePiece extends Thread {
                     timedOut = true;
             }
             else {
+                session.receivedDatagram(response.getTimeStamp());
                 this.success = true;
                 break;
             }
