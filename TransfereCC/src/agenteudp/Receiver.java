@@ -10,10 +10,11 @@ import agenteudp.management.FileID;
 import security.Keys;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -362,7 +363,7 @@ public class Receiver implements Runnable {
                     }
 
                     PDU p = DatagramParser.processDatagram(data);
-                    //System.out.println("---- PROCESSED ----\n"  + p.toString());
+                    System.out.println("---- PROCESSED ----\n"  + p.toString());
 
                     // if it's a connection request, update the IP field
                     if (p instanceof ConnectionRequest)

@@ -3,8 +3,6 @@ package agenteudp.control;
 import agenteudp.PDU;
 import agenteudp.PDUTypes;
 
-import java.nio.ByteBuffer;
-
 public class ConnectionTermination extends PDUControl {
 
     public ConnectionTermination(long seqNumber) {

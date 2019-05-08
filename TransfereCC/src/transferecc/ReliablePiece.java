@@ -5,8 +5,6 @@ import agenteudp.Sender;
 import agenteudp.control.Ack;
 import agenteudp.data.BlockData;
 
-import java.net.InetAddress;
-
 public class ReliablePiece extends Thread {
 
     private BlockData data;

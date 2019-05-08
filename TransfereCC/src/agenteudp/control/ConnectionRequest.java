@@ -3,10 +3,6 @@ package agenteudp.control;
 import agenteudp.PDU;
 import agenteudp.PDUTypes;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.util.Arrays;
-
 public class ConnectionRequest extends PDUControl {
 
 

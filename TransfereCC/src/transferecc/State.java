@@ -2,12 +2,6 @@ package transferecc;
 
 import security.Keys;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.time.Instant;
-import java.util.Random;
-import java.util.TreeMap;
-
 public class State {
 
     private Keys communicationKeys;

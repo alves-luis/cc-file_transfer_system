@@ -1,7 +1,6 @@
 package transferecc;
 
 import agenteudp.PDU;
-import agenteudp.PDUTypes;
 import agenteudp.Receiver;
 import agenteudp.Sender;
 import agenteudp.control.Ack;
@@ -84,6 +83,7 @@ public class Client {
                 }
             }
         }
+        receiver.stopRunning();
         return false;
     }
 
@@ -138,6 +138,7 @@ public class Client {
                 return true;
             }
         }
+        receiver.stopRunning();
         return false;
     }
 

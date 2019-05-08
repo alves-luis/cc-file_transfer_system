@@ -112,7 +112,7 @@ public class ClientState {
             round_trip_time_variation = (1 - BETA) * round_trip_time_variation + BETA * Math.abs(Math.round(smoothed_round_trip_time) - r);
             smoothed_round_trip_time = (1 - ALPHA) * smoothed_round_trip_time + ALPHA * r;
             retransmission_timeout = Math.round(smoothed_round_trip_time + Math.max(4*round_trip_time_variation,(float)1));
-            //System.out.println("RTTVAR: " + round_trip_time_variation + ". SRTT: " + smoothed_round_trip_time + ". RTO: " + retransmission_timeout);
+            System.out.println("RTTVAR: " + round_trip_time_variation + ". SRTT: " + smoothed_round_trip_time + ". RTO: " + retransmission_timeout);
         }
         // if rto less than 1 second, round up
         if (retransmission_timeout < 1000)

@@ -2,6 +2,7 @@ package agenteudp.data;
 
 import agenteudp.PDU;
 import agenteudp.PDUTypes;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.security.MessageDigest;
